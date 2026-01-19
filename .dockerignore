@@ -1,0 +1,12 @@
+bin/
+.git/
+.gitignore
+*.md
+deploy/
+docs/
+agents_k8s.md
+tls.crt
+tls.key
+*.crt
+*.key
+*.pem

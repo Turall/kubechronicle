@@ -1,0 +1,42 @@
+# Binaries
+/bin/
+/dist/
+bin/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Certificates (never commit!)
+certs/
+*.crt
+*.key
+*.pem
+tls.crt
+tls.key
+
+# Coverage reports
+coverage.out
+coverage.html
+*.coverprofile

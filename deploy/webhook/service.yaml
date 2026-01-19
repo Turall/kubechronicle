@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubechronicle-webhook
+  namespace: kubechronicle
+  labels:
+    app.kubernetes.io/name: kubechronicle
+    app.kubernetes.io/component: webhook
+spec:
+  type: ClusterIP
+  ports:
+  - port: 443
+    targetPort: 8443
+    protocol: TCP
+    name: https
+  selector:
+    app.kubernetes.io/name: kubechronicle
+    app.kubernetes.io/component: webhook

@@ -1,0 +1,52 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: kubechronicle-webhook
+  labels:
+    app.kubernetes.io/name: kubechronicle
+    app.kubernetes.io/component: webhook
+webhooks:
+- name: kubechronicle.k8s.io
+  clientConfig:
+    service:
+      name: kubechronicle-webhook
+      namespace: kubechronicle
+      path: /validate
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUYxekNDQTcrZ0F3SUJBZ0lVTTdHa0lYYlQ2S21hQmI3Tm92ZW1GZmRpT3lvd0RRWUpLb1pJaHZjTkFRRUwKQlFBd01qRXdNQzRHQTFVRUF3d25hM1ZpWldOb2NtOXVhV05zWlMxM1pXSm9iMjlyTG10MVltVmphSEp2Ym1sagpiR1V1YzNaak1CNFhEVEkyTURFeE9UQTBNVGd4TlZvWERUSTNNREV4T1RBME1UZ3hOVm93TWpFd01DNEdBMVVFCkF3d25hM1ZpWldOb2NtOXVhV05zWlMxM1pXSm9iMjlyTG10MVltVmphSEp2Ym1samJHVXVjM1pqTUlJQ0lqQU4KQmdrcWhraUc5dzBCQVFFRkFBT0NBZzhBTUlJQ0NnS0NBZ0VBb0NnSTNaK3JSSEVkMDdJSnFOZXVRdEFLNmppdQpMWlQzalRQRHpRcGdNVUlsNk14RjcyUmJyL3k4VGVYWEsybkFiTVlCNXUwaGNmL2lZQThHejJoNDNBdzF4NG50Cmczb3hrM3dqeHBST1lqTGZsa1FXcUY3U1h2WWlCR29FajU0cWRvZnhaY2t0VUF1RVQrditjZ210d3JXNUFpK3MKWEF6ajJoWnJOSXo0R3F4N29uUlhFSFB5MXNSWCtYKzBMT3lNMWtZRWgrNk9KU2Y0V3VBbWY3Y1BJMlE1N3kzQQpzUkI4cldObWV5U3V1dHFuMHFOZEgwSDVXOGw4ZmpOSXVVMzlDRkk0aGNpMTBSTUQ0QXJMaXZ1eWdMdnE3TDByCnExSFh2YS9QT1VVQ1BBaXJNdWwzdmJ2ZzJ6NEFHaVBOUXVEN3gxSXNyTi81VkN0SUM3L1lJMjNDT0g5ZHRyNlgKbTRUVG9QQkV5R2EwRDNNZkFPNXpwQlR3NytxaGN3MHlHdjMzTU80RHQwYUY1c3gvaWVSQXdMSk1IbTBJMENrZAo5NDlOT01ZV3RQZFF3aXpWT1pZUllrMFpmb1BTR1FXVTF2bXJsNUFSV3ZORlMyU08yQUVBM0hTWG9LQXBGNWNUCkh2anpvbjBVYS9YRmJVMm9TNTJYck5FdkVWVG1GZHdvRFhBZ3dOaEVrVzJYbDY0S1hyUWdXZmlTMG5ZQmhacWQKN05mcU80VWFNTmFObjFKeHdzMzNzczJoUzk4dTJFNk5tSkF4YW04NkJEWDFlMGFwZEx6WlhidTVFZTAya3VLeApmakt2U01IQmo1Y0VSM0lzVVJHNlFDVDhmOHNIdkltTGE5UkdiNkthdU5mTE1CdE9MRTVDODJodkZsZ2lIemdECjlsWnBrdHBJaWZkQzUzVUNBd0VBQWFPQjVEQ0I0VEFkQmdOVkhRNEVGZ1FVeHhvM0grN1NOd1FiUkhITTVnamsKU2hQVm1BVXdId1lEVlIwakJCZ3dGb0FVeHhvM0grN1NOd1FiUkhITTVnamtTaFBWbUFVd0R3WURWUjBUQVFILwpCQVV3QXdFQi96Q0JqUVlEVlIwUkJJR0ZNSUdDZ2lkcmRXSmxZMmh5YjI1cFkyeGxMWGRsWW1odmIyc3VhM1ZpClpXTm9jbTl1YVdOc1pTNXpkbU9DTld0MVltVmphSEp2Ym1samJHVXRkMlZpYUc5dmF5NXJkV0psWTJoeWIyNXAKWTJ4bExuTjJZeTVqYkhWemRHVnlMbXh2WTJGc2doVnJkV0psWTJoeWIyNXBZMnhsTFhkbFltaHZiMnVDQ1d4dgpZMkZzYUc5emREQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FnRUFBRCs4eiszc0dmekFCMzk0YkNJWnRtUFRLMXBoCm1mV0M5U0xQcURqVGlVeTVGQzROdzM5Ym1qc0xVRFFoUXZIUWdFVGp3Z2twYnJoZW1kSS9obVBGRjI0VURsS2kKR1NWZkZYb2NjdGNTVmExdGxYQzF6Z1ZhNzhNaTNRWVRJUHpYS3NISHVGSU1taUdDUmR4TExTL1ByS1ZDa1JMQwpoUEUxcUczaVB1SkEvMFRRc0NrZ3ZwU1lFeHJnSDVkQVIxNi9VeC9BekxDRUhyQTBVMllXS1pPL1ZQTDBsVWxwCmZENWlZUlM0dFY5Nlk4MWxNTm84SUtoZHhVRTJHN0pDUVcrRUVmTG9DMS9DckZrRmQxcTdUclpSQURyUjc4czIKSiswN1o1UkF1NmhPSXpDYzN2RWpyRGVMN3dhbkV2Q1MyVnQ5V25JbmFtNlJMU0JJbEFIc1N2MUtnbU9wQjZjZgpVZkwwSktkMGhIQzZBNnh0SmMrK3JZVnlCa0UzTkN4RXVNTXZacFBNOGZ1YVJEYkxaUXpkZ0MyR2o5NWhwME5EClcvbzQ4eUErL0Q2V04xSUtJNUdCTnpSNVljdTZIcCtxS2t5ak13RklHREZ4ZnVCdTEySEs0ZVZzUGlQWjdTd28KYmVTZHlCMmxlTGVENHNkckRoNmd3Zi9sb2F2akJLMEJzQUROM20zTTBOVUpBTklveFlrZ3lwc1VmYmV0RzFWTApsSmdNRlhkLzliMjNYZEt5SXl6YWdWcEg5Q1pucm1FTDdib3ZzanJBVjNZRVkrSTBDbUdxbTdYK3pNUFBSMGRFCm9lTDl4N3BsUklnWXZuTVdxOFdJQ1BZMzQ3WlU4U1EvVVJWcjY4Rzh0NjliNktNSk56dFhVbzQxbWFBYjRFQ3QKOEp4dEx4WnJ0RjBKblB3PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    # caBundle will be populated by generate-certs.sh after certificate generation
+    # For self-signed certs, this should contain the base64-encoded certificate
+  admissionReviewVersions: ["v1"]
+  sideEffects: None
+  failurePolicy: Ignore  # Fail-open: never block API server (observe-only)
+  rules:
+  # Track Deployments
+  - apiGroups: ["apps"]
+    apiVersions: ["v1"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+    resources: ["deployments"]
+  # Track StatefulSets
+  - apiGroups: ["apps"]
+    apiVersions: ["v1"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+    resources: ["statefulsets"]
+  # Track DaemonSets
+  - apiGroups: ["apps"]
+    apiVersions: ["v1"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+    resources: ["daemonsets"]
+  # Track Services
+  - apiGroups: [""]
+    apiVersions: ["v1"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+    resources: ["services"]
+  # Track ConfigMaps
+  - apiGroups: [""]
+    apiVersions: ["v1"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+    resources: ["configmaps"]
+  # Track Secrets (hashed only)
+  - apiGroups: [""]
+    apiVersions: ["v1"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+    resources: ["secrets"]
+  # Omit namespaceSelector to track all namespaces

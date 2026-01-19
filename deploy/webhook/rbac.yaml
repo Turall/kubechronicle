@@ -1,0 +1,32 @@
+---
+# ClusterRole: Minimal permissions for kubechronicle webhook
+# The webhook is observe-only and doesn't need write permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubechronicle-webhook
+  labels:
+    app.kubernetes.io/name: kubechronicle
+    app.kubernetes.io/component: webhook
+rules: []  # No permissions needed - webhook is observe-only
+  # This role exists for ServiceAccount compatibility
+  # The webhook receives admission requests from the API server,
+  # it doesn't need to make API calls itself
+
+---
+# ClusterRoleBinding: Bind ServiceAccount to ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubechronicle-webhook
+  labels:
+    app.kubernetes.io/name: kubechronicle
+    app.kubernetes.io/component: webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubechronicle-webhook
+subjects:
+  - kind: ServiceAccount
+    name: kubechronicle-webhook
+    namespace: kubechronicle

@@ -1,0 +1,9 @@
+# Ignore local certificate files
+tls.crt
+tls.key
+*.crt
+*.key
+*.pem
+
+# Ignore generated secrets
+*-secret.yaml

@@ -1,0 +1,33 @@
+# # OPTIONAL: Certificate resource for cert-manager
+
+# # NOTE: This file is OPTIONAL. Self-signed certificates are the default and recommended approach.
+# # Use this only if you have cert-manager installed and prefer managed certificates.
+
+# # For most deployments, use the self-signed certificate approach:
+# #   ./generate-certs.sh
+# #   or
+# #   make generate-certs
+
+# apiVersion: cert-manager.io/v1
+# kind: Certificate
+# metadata:
+#   name: kubechronicle-webhook-tls
+#   namespace: kubechronicle
+# spec:
+#   secretName: kubechronicle-webhook-tls
+#   issuerRef:
+#     name: kubechronicle-selfsigned-issuer
+#     kind: ClusterIssuer
+#   dnsNames:
+#   - kubechronicle-webhook.kubechronicle.svc
+#   - kubechronicle-webhook.kubechronicle.svc.cluster.local
+
+# ---
+# # Self-signed ClusterIssuer for development/testing
+# # For production, use a proper CA issuer
+# apiVersion: cert-manager.io/v1
+# kind: ClusterIssuer
+# metadata:
+#   name: kubechronicle-selfsigned-issuer
+# spec:
+#   selfSigned: {}
