@@ -49,4 +49,25 @@ webhooks:
     apiVersions: ["v1"]
     operations: ["CREATE", "UPDATE", "DELETE"]
     resources: ["secrets"]
+  # Track Ingress
+  - apiGroups: ["networking.k8s.io"]
+    apiVersions: ["v1"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+    resources: ["ingresses"]
+  # Track CustomResourceDefinitions (CRD definitions themselves)
+  - apiGroups: ["apiextensions.k8s.io"]
+    apiVersions: ["v1"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+    resources: ["customresourcedefinitions"]
+  # Note: To track CRD instances (custom resources), add specific rules below.
+  # Kubernetes webhooks don't support wildcards, so you must specify each CRD.
+  # Examples:
+  # - apiGroups: ["cert-manager.io"]
+  #   apiVersions: ["v1"]
+  #   operations: ["CREATE", "UPDATE", "DELETE"]
+  #   resources: ["certificates"]
+  # - apiGroups: ["argoproj.io"]
+  #   apiVersions: ["v1alpha1"]
+  #   operations: ["CREATE", "UPDATE", "DELETE"]
+  #   resources: ["applications"]
   # Omit namespaceSelector to track all namespaces

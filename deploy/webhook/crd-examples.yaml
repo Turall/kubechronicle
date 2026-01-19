@@ -1,0 +1,57 @@
+# Example webhook rules for common CRDs
+# Copy these rules into deploy/webhook/webhook.yaml under the rules section
+
+# Example 1: cert-manager Certificates
+# - apiGroups: ["cert-manager.io"]
+#   apiVersions: ["v1"]
+#   operations: ["CREATE", "UPDATE", "DELETE"]
+#   resources: ["certificates"]
+
+# Example 2: cert-manager ClusterIssuers
+# - apiGroups: ["cert-manager.io"]
+#   apiVersions: ["v1"]
+#   operations: ["CREATE", "UPDATE", "DELETE"]
+#   resources: ["clusterissuers"]
+
+# Example 3: ArgoCD Applications
+# - apiGroups: ["argoproj.io"]
+#   apiVersions: ["v1alpha1"]
+#   operations: ["CREATE", "UPDATE", "DELETE"]
+#   resources: ["applications"]
+
+# Example 4: ArgoCD ApplicationSets
+# - apiGroups: ["argoproj.io"]
+#   apiVersions: ["v1alpha1"]
+#   operations: ["CREATE", "UPDATE", "DELETE"]
+#   resources: ["applicationsets"]
+
+# Example 5: Prometheus PrometheusRules
+# - apiGroups: ["monitoring.coreos.com"]
+#   apiVersions: ["v1"]
+#   operations: ["CREATE", "UPDATE", "DELETE"]
+#   resources: ["prometheusrules"]
+
+# Example 6: Prometheus ServiceMonitors
+# - apiGroups: ["monitoring.coreos.com"]
+#   apiVersions: ["v1"]
+#   operations: ["CREATE", "UPDATE", "DELETE"]
+#   resources: ["servicemonitors"]
+
+# Example 7: Istio VirtualService
+# - apiGroups: ["networking.istio.io"]
+#   apiVersions: ["v1beta1"]
+#   operations: ["CREATE", "UPDATE", "DELETE"]
+#   resources: ["virtualservices"]
+
+# Example 8: Istio DestinationRule
+# - apiGroups: ["networking.istio.io"]
+#   apiVersions: ["v1beta1"]
+#   operations: ["CREATE", "UPDATE", "DELETE"]
+#   resources: ["destinationrules"]
+
+# To find your CRD details:
+# kubectl get crd <crd-name> -o yaml
+# Look for:
+#   - spec.group (API group)
+#   - spec.versions[*].name (API versions)
+#   - spec.names.plural (resource name)

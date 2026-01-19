@@ -60,12 +60,51 @@ kubechronicle uses a Kubernetes **ValidatingAdmissionWebhook** to observe resour
 ## Tracked Resources
 
 Currently tracks:
-- Deployments
-- StatefulSets
-- DaemonSets
-- Services
-- ConfigMaps
-- Secrets (hashed values only)
+- **Core Resources**: Deployments, StatefulSets, DaemonSets, Services, ConfigMaps, Secrets (hashed), Ingress
+- **Custom Resource Definitions**: CRD definitions themselves (CustomResourceDefinition resources)
+
+### Tracking CRD Instances
+
+Kubernetes admission webhooks **don't support wildcards** in rules, so you need to add specific rules for each CRD type you want to track.
+
+**To track CRD instances, add rules to `deploy/webhook/webhook.yaml`:**
+
+```yaml
+# Example: Track cert-manager Certificates
+- apiGroups: ["cert-manager.io"]
+  apiVersions: ["v1"]
+  operations: ["CREATE", "UPDATE", "DELETE"]
+  resources: ["certificates"]
+
+# Example: Track ArgoCD Applications
+- apiGroups: ["argoproj.io"]
+  apiVersions: ["v1alpha1"]
+  operations: ["CREATE", "UPDATE", "DELETE"]
+  resources: ["applications"]
+
+# Example: Track any CRD from a specific API group
+- apiGroups: ["your-crd-group.io"]
+  apiVersions: ["v1", "v1alpha1"]  # Can specify multiple versions
+  operations: ["CREATE", "UPDATE", "DELETE"]
+  resources: ["your-crd-resource"]
+```
+
+**To find CRD details:**
+```bash
+# List all CRDs
+kubectl get crds
+
+# Get details for a specific CRD
+kubectl get crd <crd-name> -o yaml
+# Look for: spec.group, spec.versions[*].name, spec.names.plural
+```
+
+See `deploy/webhook/crd-examples.yaml` for common CRD examples (cert-manager, ArgoCD, Prometheus, Istio, etc.).
+
+After adding CRD rules, apply the updated webhook configuration:
+```bash
+kubectl apply -f deploy/webhook/webhook.yaml
+```
 
 ## Ignored Fields
 
