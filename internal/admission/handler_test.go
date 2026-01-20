@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/kubechronicle/kubechronicle/internal/model"
+	"github.com/kubechronicle/kubechronicle/internal/store"
 )
 
 // mockStore is a mock implementation of store.Store for testing
@@ -35,6 +36,54 @@ func (m *mockStore) Save(event *model.ChangeEvent) error {
 func (m *mockStore) Close() error {
 	m.closeCalled = true
 	return nil
+}
+
+func (m *mockStore) QueryEvents(ctx context.Context, filters store.QueryFilters, pagination store.PaginationParams, sortOrder store.SortOrder) (*store.QueryResult, error) {
+	// Simple mock implementation - return all saved events
+	events := make([]*model.ChangeEvent, len(m.savedEvents))
+	copy(events, m.savedEvents)
+	return &store.QueryResult{
+		Events: events,
+		Total:  len(events),
+	}, nil
+}
+
+func (m *mockStore) GetEventByID(ctx context.Context, id string) (*model.ChangeEvent, error) {
+	// Simple mock implementation - search saved events
+	for _, event := range m.savedEvents {
+		if event.ID == id {
+			return event, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockStore) GetResourceHistory(ctx context.Context, kind, namespace, name string, pagination store.PaginationParams, sortOrder store.SortOrder) (*store.QueryResult, error) {
+	// Simple mock implementation - filter saved events
+	var events []*model.ChangeEvent
+	for _, event := range m.savedEvents {
+		if event.ResourceKind == kind && event.Namespace == namespace && event.Name == name {
+			events = append(events, event)
+		}
+	}
+	return &store.QueryResult{
+		Events: events,
+		Total:  len(events),
+	}, nil
+}
+
+func (m *mockStore) GetUserActivity(ctx context.Context, username string, pagination store.PaginationParams, sortOrder store.SortOrder) (*store.QueryResult, error) {
+	// Simple mock implementation - filter saved events by username
+	var events []*model.ChangeEvent
+	for _, event := range m.savedEvents {
+		if event.Actor.Username == username {
+			events = append(events, event)
+		}
+	}
+	return &store.QueryResult{
+		Events: events,
+		Total:  len(events),
+	}, nil
 }
 
 func TestNewHandler(t *testing.T) {

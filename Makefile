@@ -31,6 +31,13 @@ build:
 	go build -o bin/webhook ./cmd/webhook
 	@echo "✓ Binary built: bin/webhook"
 
+# Build the API server binary
+build-api:
+	@echo "Building API server..."
+	@mkdir -p bin
+	go build -o bin/api ./cmd/api
+	@echo "✓ Binary built: bin/api"
+
 # Run the webhook locally
 run: build
 	@echo "Running webhook locally..."

@@ -1,0 +1,46 @@
+name: Build UI Container
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (default: latest)'
+        required: false
+        default: 'latest'
+        type: string
+
+jobs:
+  build_ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set image tag
+        id: set-tag
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="latest"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "IMAGE_ADDRESS=registry.digitalocean.com/kubechronicle/ui:$TAG" >> $GITHUB_OUTPUT
+      
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_TOKEN }}
+      
+      - name: Log in to DigitalOcean Container Registry with short-lived credentials
+        run: doctl registry login --expiry-seconds 1200
+
+      - name: Build UI Docker image
+        working-directory: ./ui
+        run: |
+          docker build -t ${{ steps.set-tag.outputs.IMAGE_ADDRESS }} .
+          echo "Built image: ${{ steps.set-tag.outputs.IMAGE_ADDRESS }}"
+      
+      - name: Push UI image
+        run: docker push ${{ steps.set-tag.outputs.IMAGE_ADDRESS }}
+      
+      - name: Output image address
+        run: echo "Pushed image: ${{ steps.set-tag.outputs.IMAGE_ADDRESS }}"

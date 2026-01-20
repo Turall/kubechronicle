@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -219,4 +220,231 @@ func (s *PostgreSQLStore) Close() error {
 // HealthCheck verifies the database connection is healthy.
 func (s *PostgreSQLStore) HealthCheck(ctx context.Context) error {
 	return s.pool.Ping(ctx)
+}
+
+// QueryEvents queries change events with filters, pagination, and sorting.
+func (s *PostgreSQLStore) QueryEvents(ctx context.Context, filters QueryFilters, pagination PaginationParams, sortOrder SortOrder) (*QueryResult, error) {
+	// Build WHERE clause
+	whereClauses := []string{}
+	args := []interface{}{}
+	argIdx := 1
+
+	if filters.ResourceKind != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("resource_kind = $%d", argIdx))
+		args = append(args, filters.ResourceKind)
+		argIdx++
+	}
+
+	if filters.Namespace != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("namespace = $%d", argIdx))
+		args = append(args, filters.Namespace)
+		argIdx++
+	}
+
+	if filters.Name != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("name = $%d", argIdx))
+		args = append(args, filters.Name)
+		argIdx++
+	}
+
+	if filters.Username != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("actor->>'username' = $%d", argIdx))
+		args = append(args, filters.Username)
+		argIdx++
+	}
+
+	if filters.Operation != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("operation = $%d", argIdx))
+		args = append(args, filters.Operation)
+		argIdx++
+	}
+
+	if filters.StartTime != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("timestamp >= $%d", argIdx))
+		args = append(args, *filters.StartTime)
+		argIdx++
+	}
+
+	if filters.EndTime != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("timestamp <= $%d", argIdx))
+		args = append(args, *filters.EndTime)
+		argIdx++
+	}
+
+	if filters.Allowed != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("allowed = $%d", argIdx))
+		args = append(args, *filters.Allowed)
+		argIdx++
+	}
+
+	whereSQL := ""
+	if len(whereClauses) > 0 {
+		whereSQL = "WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	// Determine sort order
+	orderSQL := "DESC"
+	if sortOrder == SortOrderAsc {
+		orderSQL = "ASC"
+	}
+
+	// Count total matching records
+	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM change_events %s", whereSQL)
+	var total int
+	err := s.pool.QueryRow(ctx, countSQL, args...).Scan(&total)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count events: %w", err)
+	}
+
+	// Query events with pagination
+	limit := pagination.Limit
+	if limit <= 0 {
+		limit = 50 // Default limit
+	}
+	if limit > 1000 {
+		limit = 1000 // Max limit
+	}
+
+	querySQL := fmt.Sprintf(`
+		SELECT id, timestamp, operation, resource_kind, namespace, name,
+		       actor, source, diff, object_snapshot, allowed, block_pattern
+		FROM change_events
+		%s
+		ORDER BY timestamp %s
+		LIMIT $%d OFFSET $%d
+	`, whereSQL, orderSQL, argIdx, argIdx+1)
+
+	args = append(args, limit, pagination.Offset)
+
+	rows, err := s.pool.Query(ctx, querySQL, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query events: %w", err)
+	}
+	defer rows.Close()
+
+	events := []*model.ChangeEvent{}
+	for rows.Next() {
+		event, err := s.scanEvent(rows)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan event: %w", err)
+		}
+		events = append(events, event)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return &QueryResult{
+		Events: events,
+		Total:  total,
+	}, nil
+}
+
+// GetEventByID retrieves a single change event by ID.
+func (s *PostgreSQLStore) GetEventByID(ctx context.Context, id string) (*model.ChangeEvent, error) {
+	querySQL := `
+		SELECT id, timestamp, operation, resource_kind, namespace, name,
+		       actor, source, diff, object_snapshot, allowed, block_pattern
+		FROM change_events
+		WHERE id = $1
+	`
+
+	row := s.pool.QueryRow(ctx, querySQL, id)
+	event, err := s.scanEventRow(row)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get event by ID: %w", err)
+	}
+
+	return event, nil
+}
+
+// GetResourceHistory retrieves the change history for a specific resource.
+func (s *PostgreSQLStore) GetResourceHistory(ctx context.Context, kind, namespace, name string, pagination PaginationParams, sortOrder SortOrder) (*QueryResult, error) {
+	filters := QueryFilters{
+		ResourceKind: kind,
+		Namespace:    namespace,
+		Name:         name,
+	}
+	return s.QueryEvents(ctx, filters, pagination, sortOrder)
+}
+
+// GetUserActivity retrieves change events for a specific user.
+func (s *PostgreSQLStore) GetUserActivity(ctx context.Context, username string, pagination PaginationParams, sortOrder SortOrder) (*QueryResult, error) {
+	filters := QueryFilters{
+		Username: username,
+	}
+	return s.QueryEvents(ctx, filters, pagination, sortOrder)
+}
+
+// scanEvent scans a single event from pgx.Rows.
+func (s *PostgreSQLStore) scanEvent(rows interface {
+	Scan(dest ...interface{}) error
+}) (*model.ChangeEvent, error) {
+	var (
+		id             string
+		timestamp      time.Time
+		operation      string
+		resourceKind   string
+		namespace      string
+		name           string
+		actorJSON      []byte
+		sourceJSON     []byte
+		diffJSON       []byte
+		snapshotJSON   []byte
+		allowed        bool
+		blockPattern   *string
+	)
+
+	err := rows.Scan(
+		&id, &timestamp, &operation, &resourceKind, &namespace, &name,
+		&actorJSON, &sourceJSON, &diffJSON, &snapshotJSON, &allowed, &blockPattern,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	event := &model.ChangeEvent{
+		ID:           id,
+		Timestamp:    timestamp,
+		Operation:    operation,
+		ResourceKind: resourceKind,
+		Namespace:    namespace,
+		Name:         name,
+		Allowed:      allowed,
+	}
+
+	if blockPattern != nil {
+		event.BlockPattern = *blockPattern
+	}
+
+	// Unmarshal JSONB fields
+	if err := json.Unmarshal(actorJSON, &event.Actor); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal actor: %w", err)
+	}
+
+	if err := json.Unmarshal(sourceJSON, &event.Source); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal source: %w", err)
+	}
+
+	if len(diffJSON) > 0 {
+		if err := json.Unmarshal(diffJSON, &event.Diff); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal diff: %w", err)
+		}
+	}
+
+	if len(snapshotJSON) > 0 {
+		if err := json.Unmarshal(snapshotJSON, &event.ObjectSnapshot); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal object snapshot: %w", err)
+		}
+	}
+
+	return event, nil
+}
+
+// scanEventRow scans a single event from pgx.Row.
+func (s *PostgreSQLStore) scanEventRow(row interface {
+	Scan(dest ...interface{}) error
+}) (*model.ChangeEvent, error) {
+	return s.scanEvent(row)
 }

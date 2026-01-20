@@ -330,3 +330,38 @@ See [COVERAGE.md](COVERAGE.md) for detailed testing guidelines.
 ## License
 
 Open source - see LICENSE file for details.
+
+## User Interface
+
+KubeChronicle includes a React-based web UI for exploring change history.
+
+### Deployment
+
+The UI can be deployed to Kubernetes using the provided manifests:
+
+```bash
+# Deploy the UI
+kubectl apply -k deploy/ui
+```
+
+### Accessing the UI
+
+Once deployed, you can access the UI via port forwarding:
+
+```bash
+kubectl port-forward svc/kubechronicle-ui 8080:80 -n kubechronicle
+```
+
+Then open http://localhost:8080 in your browser.
+
+### Local Development
+
+To run the UI locally:
+
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+See [ui/README.md](ui/README.md) for more details.
