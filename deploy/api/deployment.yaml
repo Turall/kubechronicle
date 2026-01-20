@@ -18,9 +18,11 @@ spec:
         app.kubernetes.io/name: kubechronicle
         app.kubernetes.io/component: api
     spec:
+      imagePullSecrets:
+        - name: do-registry-secret
       containers:
       - name: api
-        image: kubechronicle/api:latest
+        image: registry.digitalocean.com/kubechronicle/api:latest
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
