@@ -1,4 +1,4 @@
-name: Build UI Container
+name: Build API Container
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
         type: string
 
 jobs:
-  build_ui:
+  build_api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,7 +23,7 @@ jobs:
             TAG="latest"
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "IMAGE_ADDRESS=registry.digitalocean.com/kubechronicle/ui:$TAG" >> $GITHUB_OUTPUT
+          echo "IMAGE_ADDRESS=registry.digitalocean.com/kubechronicle/api:$TAG" >> $GITHUB_OUTPUT
       
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
@@ -33,15 +33,14 @@ jobs:
       - name: Log in to DigitalOcean Container Registry with short-lived credentials
         run: doctl registry login --expiry-seconds 1200
 
-      - name: Build UI Docker image
-        working-directory: ./ui
+      - name: Build API Docker image
         env:
           IMAGE_ADDRESS: ${{ steps.set-tag.outputs.IMAGE_ADDRESS }}
         run: |
-          docker build -t $IMAGE_ADDRESS .
+          docker build -f Dockerfile.api -t $IMAGE_ADDRESS .
           echo "Built image: $IMAGE_ADDRESS"
       
-      - name: Push UI image
+      - name: Push API image
         env:
           IMAGE_ADDRESS: ${{ steps.set-tag.outputs.IMAGE_ADDRESS }}
         run: docker push $IMAGE_ADDRESS

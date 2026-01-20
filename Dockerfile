@@ -1,4 +1,4 @@
-# Build stage
+# Build stage - Webhook Service
 FROM golang:1.21-alpine AS builder
 
 WORKDIR /build
@@ -10,7 +10,7 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build binary
+# Build webhook binary
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o webhook ./cmd/webhook
 
 # Runtime stage
