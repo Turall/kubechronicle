@@ -4,6 +4,30 @@
 
 After adding the login page, you **must rebuild the UI Docker image** for the changes to take effect.
 
+## Building with GitHub Actions
+
+The GitHub Actions workflow (`.github/workflows/build-ui.yml`) supports passing the API URL in multiple ways:
+
+### Option 1: Using GitHub Secrets (Recommended for Production)
+
+1. Go to your repository **Settings → Secrets and variables → Actions**
+2. Add a new secret named `VITE_API_URL` with your API URL (e.g., `http://kubechronicle-api:80`)
+3. The workflow will automatically use this secret if it exists
+
+### Option 2: Using Workflow Input
+
+When manually triggering the workflow:
+1. Go to **Actions → Build UI Container → Run workflow**
+2. Fill in the `api_url` input field with your API URL (e.g., `http://kubechronicle-api:80`)
+3. Optionally set a custom `tag` (defaults to `latest`)
+4. Click **Run workflow**
+
+### Option 3: Default Value
+
+If neither secret nor input is provided, it defaults to `http://kubechronicle-api:80`
+
+**Priority order**: `secrets.VITE_API_URL` → `github.event.inputs.api_url` → default value
+
 ## Build Commands
 
 ### For Kubernetes Deployment

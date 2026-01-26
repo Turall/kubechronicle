@@ -8,6 +8,11 @@ on:
         required: false
         default: 'latest'
         type: string
+      api_url:
+        description: 'API URL (default: http://kubechronicle-api:80)'
+        required: false
+        default: 'http://kubechronicle-api:80'
+        type: string
 
 jobs:
   build_ui:
@@ -37,9 +42,14 @@ jobs:
         working-directory: ./ui
         env:
           IMAGE_ADDRESS: ${{ steps.set-tag.outputs.IMAGE_ADDRESS }}
+          # Use secret if available, otherwise use input, otherwise use default
+          VITE_API_URL: ${{ secrets.VITE_API_URL || github.event.inputs.api_url || 'http://kubechronicle-api:80' }}
         run: |
-          docker build -t $IMAGE_ADDRESS .
+          docker build \
+            --build-arg VITE_API_URL="$VITE_API_URL" \
+            -t $IMAGE_ADDRESS .
           echo "Built image: $IMAGE_ADDRESS"
+          echo "Built with API URL: $VITE_API_URL"
       
       - name: Push UI image
         env:
