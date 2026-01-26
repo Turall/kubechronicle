@@ -38,7 +38,7 @@ func TestHandleLogin_Success(t *testing.T) {
 	}
 	body, _ := json.Marshal(loginReq)
 
-	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/kubechronicle/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -90,7 +90,7 @@ func TestHandleLogin_InvalidCredentials(t *testing.T) {
 	}
 	body, _ := json.Marshal(loginReq)
 
-	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/kubechronicle/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -117,7 +117,7 @@ func TestHandleLogin_UnknownUser(t *testing.T) {
 	}
 	body, _ := json.Marshal(loginReq)
 
-	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/kubechronicle/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -136,7 +136,7 @@ func TestHandleLogin_InvalidMethod(t *testing.T) {
 	auth := NewAuthenticator(config)
 	handler := NewLoginHandler(auth)
 
-	req := httptest.NewRequest("GET", "/api/auth/login", nil)
+	req := httptest.NewRequest("GET", "/kubechronicle/api/auth/login", nil)
 	w := httptest.NewRecorder()
 
 	handler.HandleLogin(w, req)
@@ -154,7 +154,7 @@ func TestHandleLogin_InvalidBody(t *testing.T) {
 	auth := NewAuthenticator(config)
 	handler := NewLoginHandler(auth)
 
-	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader([]byte("invalid json")))
+	req := httptest.NewRequest("POST", "/kubechronicle/api/auth/login", bytes.NewReader([]byte("invalid json")))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -173,7 +173,7 @@ func TestHandleLogin_Options(t *testing.T) {
 	auth := NewAuthenticator(config)
 	handler := NewLoginHandler(auth)
 
-	req := httptest.NewRequest("OPTIONS", "/api/auth/login", nil)
+	req := httptest.NewRequest("OPTIONS", "/kubechronicle/api/auth/login", nil)
 	w := httptest.NewRecorder()
 
 	handler.HandleLogin(w, req)

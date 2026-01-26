@@ -128,7 +128,7 @@ func (a *Authenticator) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Skip auth for health check and login endpoints
-			if r.URL.Path == "/health" || r.URL.Path == "/api/auth/login" {
+			if r.URL.Path == "/health" || r.URL.Path == "/kubechronicle/api/auth/login" {
 				next.ServeHTTP(w, r)
 				return
 			}

@@ -95,7 +95,7 @@ func TestHandleListChanges_Success(t *testing.T) {
 	}
 	server := NewServer(mock)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/changes?resource_kind=Deployment&namespace=default&name=my-app&user=user@example.com&operation=CREATE&start_time=2024-01-01T00:00:00Z&end_time=2024-01-02T00:00:00Z&allowed=true&limit=10&offset=5&sort=asc", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/kubechronicle/api/changes?resource_kind=Deployment&namespace=default&name=my-app&user=user@example.com&operation=CREATE&start_time=2024-01-01T00:00:00Z&end_time=2024-01-02T00:00:00Z&allowed=true&limit=10&offset=5&sort=asc", nil)
 	rec := httptest.NewRecorder()
 
 	server.HandleListChanges(rec, req)
@@ -124,7 +124,7 @@ func TestHandleListChanges_Success(t *testing.T) {
 
 func TestHandleListChanges_Options(t *testing.T) {
 	server := NewServer(&mockStore{queryResult: &store.QueryResult{Events: []*model.ChangeEvent{}, Total: 0}})
-	req := httptest.NewRequest(http.MethodOptions, "/api/changes", nil)
+	req := httptest.NewRequest(http.MethodOptions, "/kubechronicle/api/changes", nil)
 	rec := httptest.NewRecorder()
 
 	server.HandleListChanges(rec, req)
@@ -136,7 +136,7 @@ func TestHandleListChanges_Options(t *testing.T) {
 
 func TestHandleListChanges_MethodNotAllowed(t *testing.T) {
 	server := NewServer(&mockStore{})
-	req := httptest.NewRequest(http.MethodPost, "/api/changes", bytes.NewBufferString("{}"))
+	req := httptest.NewRequest(http.MethodPost, "/kubechronicle/api/changes", bytes.NewBufferString("{}"))
 	rec := httptest.NewRecorder()
 
 	server.HandleListChanges(rec, req)
@@ -150,7 +150,7 @@ func TestHandleGetChange_Success(t *testing.T) {
 	mock := &mockStore{eventByID: sampleEvent()}
 	server := NewServer(mock)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/changes/CREATE-Deployment-my-app-123", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/changes/CREATE-Deployment-my-app-123", nil)
 	rec := httptest.NewRecorder()
 
 	server.HandleGetChange(rec, req)
@@ -169,7 +169,7 @@ func TestHandleGetChange_Success(t *testing.T) {
 
 func TestHandleGetChange_BadRequest(t *testing.T) {
 	server := NewServer(&mockStore{})
-	req := httptest.NewRequest(http.MethodGet, "/api/changes/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/changes/", nil)
 	rec := httptest.NewRecorder()
 
 	server.HandleGetChange(rec, req)
@@ -188,7 +188,7 @@ func TestHandleResourceHistory_Success(t *testing.T) {
 	}
 	server := NewServer(mock)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/resources/Deployment/default/my-app/history?limit=2&offset=1&sort=asc", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/resources/Deployment/default/my-app/history?limit=2&offset=1&sort=asc", nil)
 	rec := httptest.NewRecorder()
 
 	server.HandleResourceHistory(rec, req)
@@ -209,7 +209,7 @@ func TestHandleResourceHistory_Success(t *testing.T) {
 
 func TestHandleResourceHistory_BadPath(t *testing.T) {
 	server := NewServer(&mockStore{})
-	req := httptest.NewRequest(http.MethodGet, "/api/resources/Deployment/default/history", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/resources/Deployment/default/history", nil)
 	rec := httptest.NewRecorder()
 
 	server.HandleResourceHistory(rec, req)
@@ -228,7 +228,7 @@ func TestHandleUserActivity_Success(t *testing.T) {
 	}
 	server := NewServer(mock)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/users/user%40example.com/activity?limit=1&offset=0&sort=desc", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/users/user%40example.com/activity?limit=1&offset=0&sort=desc", nil)
 	rec := httptest.NewRecorder()
 
 	server.HandleUserActivity(rec, req)
@@ -243,7 +243,7 @@ func TestHandleUserActivity_Success(t *testing.T) {
 
 func TestHandleUserActivity_BadPath(t *testing.T) {
 	server := NewServer(&mockStore{})
-	req := httptest.NewRequest(http.MethodGet, "/api/users//activity", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/users//activity", nil)
 	rec := httptest.NewRecorder()
 
 	server.HandleUserActivity(rec, req)
@@ -256,9 +256,9 @@ func TestHandleUserActivity_BadPath(t *testing.T) {
 func TestHandleGetChange_InvalidURLEncoding(t *testing.T) {
 	server := NewServer(&mockStore{})
 	// Create request with valid URL first, then manually set invalid path
-	req := httptest.NewRequest(http.MethodGet, "/api/changes/test-id", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/changes/test-id", nil)
 	// Manually set an invalid percent-encoded path that PathUnescape will fail on
-	req.URL.Path = "/api/changes/%ZZ"
+	req.URL.Path = "/kubechronicle/api/changes/%ZZ"
 	rec := httptest.NewRecorder()
 	server.HandleGetChange(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -269,9 +269,9 @@ func TestHandleGetChange_InvalidURLEncoding(t *testing.T) {
 func TestHandleResourceHistory_InvalidURLEncoding(t *testing.T) {
 	server := NewServer(&mockStore{})
 	// Create request with valid URL first, then manually set invalid path
-	req := httptest.NewRequest(http.MethodGet, "/api/resources/Deployment/default/my-app/history", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/resources/Deployment/default/my-app/history", nil)
 	// Manually set an invalid percent-encoded path that PathUnescape will fail on
-	req.URL.Path = "/api/resources/%ZZ/default/my-app/history"
+	req.URL.Path = "/kubechronicle/api/resources/%ZZ/default/my-app/history"
 	rec := httptest.NewRecorder()
 	server.HandleResourceHistory(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -282,9 +282,9 @@ func TestHandleResourceHistory_InvalidURLEncoding(t *testing.T) {
 func TestHandleUserActivity_InvalidURLEncoding(t *testing.T) {
 	server := NewServer(&mockStore{})
 	// Create request with valid URL first, then manually set invalid path
-	req := httptest.NewRequest(http.MethodGet, "/api/users/testuser/activity", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/users/testuser/activity", nil)
 	// Manually set an invalid percent-encoded path that PathUnescape will fail on
-	req.URL.Path = "/api/users/%ZZ/activity"
+	req.URL.Path = "/kubechronicle/api/users/%ZZ/activity"
 	rec := httptest.NewRecorder()
 	server.HandleUserActivity(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -297,7 +297,7 @@ func TestHandleListChanges_ValidTimeParsing(t *testing.T) {
 	server := NewServer(mock)
 	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	endTime := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/changes?start_time=%s&end_time=%s", startTime.Format(time.RFC3339), endTime.Format(time.RFC3339)), nil)
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/kubechronicle/api/changes?start_time=%s&end_time=%s", startTime.Format(time.RFC3339), endTime.Format(time.RFC3339)), nil)
 	rec := httptest.NewRecorder()
 	server.HandleListChanges(rec, req)
 	if rec.Code != http.StatusOK {
@@ -311,7 +311,7 @@ func TestHandleListChanges_ValidTimeParsing(t *testing.T) {
 func TestHandleListChanges_ValidAllowedParsing(t *testing.T) {
 	mock := &mockStore{queryResult: &store.QueryResult{Events: []*model.ChangeEvent{}, Total: 0}}
 	server := NewServer(mock)
-	req := httptest.NewRequest(http.MethodGet, "/api/changes?allowed=true", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/changes?allowed=true", nil)
 	rec := httptest.NewRecorder()
 	server.HandleListChanges(rec, req)
 	if rec.Code != http.StatusOK {
@@ -325,7 +325,7 @@ func TestHandleListChanges_ValidAllowedParsing(t *testing.T) {
 func TestHandleListChanges_NegativeLimit(t *testing.T) {
 	mock := &mockStore{queryResult: &store.QueryResult{Events: []*model.ChangeEvent{}, Total: 0}}
 	server := NewServer(mock)
-	req := httptest.NewRequest(http.MethodGet, "/api/changes?limit=-5", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/changes?limit=-5", nil)
 	rec := httptest.NewRecorder()
 	server.HandleListChanges(rec, req)
 	if rec.Code != http.StatusOK {
@@ -339,7 +339,7 @@ func TestHandleListChanges_NegativeLimit(t *testing.T) {
 func TestHandleListChanges_ZeroLimit(t *testing.T) {
 	mock := &mockStore{queryResult: &store.QueryResult{Events: []*model.ChangeEvent{}, Total: 0}}
 	server := NewServer(mock)
-	req := httptest.NewRequest(http.MethodGet, "/api/changes?limit=0", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/changes?limit=0", nil)
 	rec := httptest.NewRecorder()
 	server.HandleListChanges(rec, req)
 	if rec.Code != http.StatusOK {
@@ -352,8 +352,8 @@ func TestHandleListChanges_ZeroLimit(t *testing.T) {
 
 func TestHandleResourceHistory_InvalidURLEncoding_Namespace(t *testing.T) {
 	server := NewServer(&mockStore{})
-	req := httptest.NewRequest(http.MethodGet, "/api/resources/Deployment/default/my-app/history", nil)
-	req.URL.Path = "/api/resources/Deployment/%ZZ/my-app/history"
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/resources/Deployment/default/my-app/history", nil)
+	req.URL.Path = "/kubechronicle/api/resources/Deployment/%ZZ/my-app/history"
 	rec := httptest.NewRecorder()
 	server.HandleResourceHistory(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -363,8 +363,8 @@ func TestHandleResourceHistory_InvalidURLEncoding_Namespace(t *testing.T) {
 
 func TestHandleResourceHistory_InvalidURLEncoding_Name(t *testing.T) {
 	server := NewServer(&mockStore{})
-	req := httptest.NewRequest(http.MethodGet, "/api/resources/Deployment/default/my-app/history", nil)
-	req.URL.Path = "/api/resources/Deployment/default/%ZZ/history"
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/resources/Deployment/default/my-app/history", nil)
+	req.URL.Path = "/kubechronicle/api/resources/Deployment/default/%ZZ/history"
 	rec := httptest.NewRecorder()
 	server.HandleResourceHistory(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -375,7 +375,7 @@ func TestHandleResourceHistory_InvalidURLEncoding_Name(t *testing.T) {
 func TestHandleListChanges_InvalidAllowedFalse(t *testing.T) {
 	mock := &mockStore{queryResult: &store.QueryResult{Events: []*model.ChangeEvent{}, Total: 0}}
 	server := NewServer(mock)
-	req := httptest.NewRequest(http.MethodGet, "/api/changes?allowed=false", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/changes?allowed=false", nil)
 	rec := httptest.NewRecorder()
 	server.HandleListChanges(rec, req)
 	if rec.Code != http.StatusOK {
@@ -389,7 +389,7 @@ func TestHandleListChanges_InvalidAllowedFalse(t *testing.T) {
 func TestHandleListChanges_InvalidSort(t *testing.T) {
 	mock := &mockStore{queryResult: &store.QueryResult{Events: []*model.ChangeEvent{}, Total: 0}}
 	server := NewServer(mock)
-	req := httptest.NewRequest(http.MethodGet, "/api/changes?sort=invalid", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/changes?sort=invalid", nil)
 	rec := httptest.NewRecorder()
 	server.HandleListChanges(rec, req)
 	if rec.Code != http.StatusOK {
@@ -404,7 +404,7 @@ func TestHandleListChanges_InvalidSort(t *testing.T) {
 func TestHandleResourceHistory_InvalidSort(t *testing.T) {
 	mock := &mockStore{resourceHistory: &store.QueryResult{Events: []*model.ChangeEvent{}, Total: 0}}
 	server := NewServer(mock)
-	req := httptest.NewRequest(http.MethodGet, "/api/resources/Deployment/default/my-app/history?sort=invalid", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/resources/Deployment/default/my-app/history?sort=invalid", nil)
 	rec := httptest.NewRecorder()
 	server.HandleResourceHistory(rec, req)
 	if rec.Code != http.StatusOK {
@@ -419,7 +419,7 @@ func TestHandleResourceHistory_InvalidSort(t *testing.T) {
 func TestHandleUserActivity_InvalidSort(t *testing.T) {
 	mock := &mockStore{userActivity: &store.QueryResult{Events: []*model.ChangeEvent{}, Total: 0}}
 	server := NewServer(mock)
-	req := httptest.NewRequest(http.MethodGet, "/api/users/testuser/activity?sort=invalid", nil)
+	req := httptest.NewRequest(http.MethodGet, "/kubechronicle/api/users/testuser/activity?sort=invalid", nil)
 	rec := httptest.NewRecorder()
 	server.HandleUserActivity(rec, req)
 	if rec.Code != http.StatusOK {

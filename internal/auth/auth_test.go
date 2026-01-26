@@ -239,7 +239,7 @@ func TestMiddleware_SkipHealthAndLogin(t *testing.T) {
 	}
 
 	// Test login endpoint
-	req = httptest.NewRequest("POST", "/api/auth/login", nil)
+	req = httptest.NewRequest("POST", "/kubechronicle/api/auth/login", nil)
 	w = httptest.NewRecorder()
 	wrapped.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {

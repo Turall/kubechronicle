@@ -1,9 +1,18 @@
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_PREFIX = '/kubechronicle';
 
 export const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL + API_PREFIX,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Create a client without auth interceptor for auth checks
+export const apiClientNoAuth = axios.create({
+  baseURL: API_URL + API_PREFIX,
   headers: {
     'Content-Type': 'application/json',
   },

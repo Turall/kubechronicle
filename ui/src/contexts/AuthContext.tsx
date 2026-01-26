@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { login as apiLogin } from '../api/auth';
 
 export interface User {
   username: string;
@@ -56,20 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Invalid credentials' }));
-        throw new Error(error.error || 'Login failed');
-      }
-
-      const data = await response.json();
+      const data = await apiLogin(username, password);
       setToken(data.token);
       setUser(data.user);
       
@@ -78,7 +66,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('auth_user', JSON.stringify(data.user));
     } catch (err: any) {
       // If login endpoint doesn't exist (auth disabled), allow access
-      if (err.message?.includes('404') || err.message?.includes('Not Found')) {
+      if (err.response?.status === 404 || err.message?.includes('404') || err.message?.includes('Not Found')) {
         // Auth is disabled, create a dummy user
         const dummyUser: User = { username: 'anonymous', roles: [] };
         setUser(dummyUser);

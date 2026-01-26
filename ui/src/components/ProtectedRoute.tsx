@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { apiClientNoAuth } from '../api/client';
 
 interface ProtectedRouteProps {
   children: React.ReactElement;
@@ -15,16 +16,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
   // Check if authentication is required by trying to access API without token
   useEffect(() => {
     const checkAuthRequired = async () => {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-      
       try {
         // Try to access API endpoint without Authorization header
-        const response = await fetch(`${apiUrl}/api/changes?limit=1`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          // Explicitly don't include Authorization header
+        const response = await apiClientNoAuth.get('/api/changes', {
+          params: { limit: 1 },
+          validateStatus: () => true, // Don't throw on any status
         });
         
         console.log('Auth check response status:', response.status);
@@ -33,7 +29,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
           // 401 means auth is required
           console.log('Authentication is required');
           setAuthRequired(true);
-        } else if (response.ok) {
+        } else if (response.status === 200) {
           // 200 OK means auth is not required
           console.log('Authentication is not required');
           setAuthRequired(false);
@@ -41,21 +37,22 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
           // Other status - check if login endpoint exists
           console.log('Checking login endpoint...');
           try {
-            const loginResponse = await fetch(`${apiUrl}/api/auth/login`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username: '', password: '' }),
+            const loginResponse = await apiClientNoAuth.post('/api/auth/login', {
+              username: '',
+              password: '',
+            }, {
+              validateStatus: () => true, // Don't throw on any status
             });
             console.log('Login endpoint status:', loginResponse.status);
             // If login endpoint exists and returns 400/401 (not 404), auth is enabled
             setAuthRequired(loginResponse.status !== 404);
-          } catch (loginErr) {
+          } catch (loginErr: any) {
             console.warn('Login endpoint check failed:', loginErr);
             // Can't determine, assume auth is required for safety
             setAuthRequired(true);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         // Network error - assume auth might be required
         console.warn('Failed to check auth requirement:', err);
         // If user is not authenticated, require auth to be safe

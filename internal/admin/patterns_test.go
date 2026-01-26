@@ -37,7 +37,7 @@ func TestHandleGetIgnoreConfig_Success(t *testing.T) {
 	}
 	clientset.CoreV1().ConfigMaps("default").Create(context.Background(), cm, metav1.CreateOptions{})
 
-	req := httptest.NewRequest("GET", "/api/admin/patterns/ignore", nil)
+	req := httptest.NewRequest("GET", "/kubechronicle/api/admin/patterns/ignore", nil)
 	w := httptest.NewRecorder()
 
 	handler.HandleGetIgnoreConfig(w, req)
@@ -63,7 +63,7 @@ func TestHandleGetIgnoreConfig_Empty(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	handler := NewPatternsHandler(clientset, "default", "test-patterns")
 
-	req := httptest.NewRequest("GET", "/api/admin/patterns/ignore", nil)
+	req := httptest.NewRequest("GET", "/kubechronicle/api/admin/patterns/ignore", nil)
 	w := httptest.NewRecorder()
 
 	handler.HandleGetIgnoreConfig(w, req)
@@ -93,7 +93,7 @@ func TestHandleUpdateIgnoreConfig_Success(t *testing.T) {
 	}
 	body, _ := json.Marshal(ignoreConfig)
 
-	req := httptest.NewRequest("PUT", "/api/admin/patterns/ignore", bytes.NewReader(body))
+	req := httptest.NewRequest("PUT", "/kubechronicle/api/admin/patterns/ignore", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -127,7 +127,7 @@ func TestHandleUpdateIgnoreConfig_InvalidBody(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	handler := NewPatternsHandler(clientset, "default", "test-patterns")
 
-	req := httptest.NewRequest("PUT", "/api/admin/patterns/ignore", bytes.NewReader([]byte("invalid json")))
+	req := httptest.NewRequest("PUT", "/kubechronicle/api/admin/patterns/ignore", bytes.NewReader([]byte("invalid json")))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -142,7 +142,7 @@ func TestHandleUpdateIgnoreConfig_WrongMethod(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	handler := NewPatternsHandler(clientset, "default", "test-patterns")
 
-	req := httptest.NewRequest("POST", "/api/admin/patterns/ignore", nil)
+	req := httptest.NewRequest("POST", "/kubechronicle/api/admin/patterns/ignore", nil)
 	w := httptest.NewRecorder()
 
 	handler.HandleUpdateIgnoreConfig(w, req)
@@ -174,7 +174,7 @@ func TestHandleGetBlockConfig_Success(t *testing.T) {
 	}
 	clientset.CoreV1().ConfigMaps("default").Create(context.Background(), cm, metav1.CreateOptions{})
 
-	req := httptest.NewRequest("GET", "/api/admin/patterns/block", nil)
+	req := httptest.NewRequest("GET", "/kubechronicle/api/admin/patterns/block", nil)
 	w := httptest.NewRecorder()
 
 	handler.HandleGetBlockConfig(w, req)
@@ -206,7 +206,7 @@ func TestHandleUpdateBlockConfig_Success(t *testing.T) {
 	}
 	body, _ := json.Marshal(blockConfig)
 
-	req := httptest.NewRequest("PUT", "/api/admin/patterns/block", bytes.NewReader(body))
+	req := httptest.NewRequest("PUT", "/kubechronicle/api/admin/patterns/block", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -234,7 +234,7 @@ func TestHandleOptions(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	handler := NewPatternsHandler(clientset, "default", "test-patterns")
 
-	req := httptest.NewRequest("OPTIONS", "/api/admin/patterns/ignore", nil)
+	req := httptest.NewRequest("OPTIONS", "/kubechronicle/api/admin/patterns/ignore", nil)
 	w := httptest.NewRecorder()
 
 	handler.HandleGetIgnoreConfig(w, req)

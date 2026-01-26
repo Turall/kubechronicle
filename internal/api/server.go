@@ -150,8 +150,8 @@ func (s *Server) HandleGetChange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract ID from path: /api/changes/{id}
-	path := strings.TrimPrefix(r.URL.Path, "/api/changes/")
+	// Extract ID from path: /kubechronicle/api/changes/{id}
+	path := strings.TrimPrefix(r.URL.Path, "/kubechronicle/api/changes/")
 	if path == "" || strings.Contains(path, "/") {
 		s.sendError(w, http.StatusBadRequest, "Missing or invalid change ID")
 		return
@@ -186,17 +186,17 @@ func (s *Server) HandleResourceHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract path: /api/resources/{kind}/{namespace}/{name}/history
-	path := strings.TrimPrefix(r.URL.Path, "/api/resources/")
+	// Extract path: /kubechronicle/api/resources/{kind}/{namespace}/{name}/history
+	path := strings.TrimPrefix(r.URL.Path, "/kubechronicle/api/resources/")
 	if !strings.HasSuffix(path, "/history") {
-		s.sendError(w, http.StatusBadRequest, "Invalid resource path. Expected: /api/resources/{kind}/{namespace}/{name}/history")
+		s.sendError(w, http.StatusBadRequest, "Invalid resource path. Expected: /kubechronicle/api/resources/{kind}/{namespace}/{name}/history")
 		return
 	}
 
 	path = strings.TrimSuffix(path, "/history")
 	pathParts := strings.Split(path, "/")
 	if len(pathParts) < 3 {
-		s.sendError(w, http.StatusBadRequest, "Invalid resource path. Expected: /api/resources/{kind}/{namespace}/{name}/history")
+		s.sendError(w, http.StatusBadRequest, "Invalid resource path. Expected: /kubechronicle/api/resources/{kind}/{namespace}/{name}/history")
 		return
 	}
 
@@ -262,10 +262,10 @@ func (s *Server) HandleUserActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract username from path: /api/users/{username}/activity
-	path := strings.TrimPrefix(r.URL.Path, "/api/users/")
+	// Extract username from path: /kubechronicle/api/users/{username}/activity
+	path := strings.TrimPrefix(r.URL.Path, "/kubechronicle/api/users/")
 	if !strings.HasSuffix(path, "/activity") {
-		s.sendError(w, http.StatusBadRequest, "Invalid user path. Expected: /api/users/{username}/activity")
+		s.sendError(w, http.StatusBadRequest, "Invalid user path. Expected: /kubechronicle/api/users/{username}/activity")
 		return
 	}
 

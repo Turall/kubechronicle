@@ -85,19 +85,19 @@ func main() {
 	// Login endpoint (no auth required)
 	if cfg.AuthConfig != nil && cfg.AuthConfig.EnableAuth {
 		loginHandler := auth.NewLoginHandler(authenticator)
-		mux.HandleFunc("/api/auth/login", loginHandler.HandleLogin)
+		mux.HandleFunc("/kubechronicle/api/auth/login", loginHandler.HandleLogin)
 	}
 	
 	// API endpoints (protected by auth middleware)
-	mux.HandleFunc("/api/changes", apiServer.HandleListChanges)
-	mux.HandleFunc("/api/changes/", apiServer.HandleGetChange)
-	mux.HandleFunc("/api/resources/", apiServer.HandleResourceHistory)
-	mux.HandleFunc("/api/users/", apiServer.HandleUserActivity)
+	mux.HandleFunc("/kubechronicle/api/changes", apiServer.HandleListChanges)
+	mux.HandleFunc("/kubechronicle/api/changes/", apiServer.HandleGetChange)
+	mux.HandleFunc("/kubechronicle/api/resources/", apiServer.HandleResourceHistory)
+	mux.HandleFunc("/kubechronicle/api/users/", apiServer.HandleUserActivity)
 	
 	// Admin endpoints (require admin role)
 	if patternsHandler != nil {
 		adminMux := http.NewServeMux()
-		adminMux.HandleFunc("/api/admin/patterns/ignore", func(w http.ResponseWriter, r *http.Request) {
+		adminMux.HandleFunc("/kubechronicle/api/admin/patterns/ignore", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet {
 				patternsHandler.HandleGetIgnoreConfig(w, r)
 			} else if r.Method == http.MethodPut {
@@ -106,7 +106,7 @@ func main() {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
 		})
-		adminMux.HandleFunc("/api/admin/patterns/block", func(w http.ResponseWriter, r *http.Request) {
+		adminMux.HandleFunc("/kubechronicle/api/admin/patterns/block", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet {
 				patternsHandler.HandleGetBlockConfig(w, r)
 			} else if r.Method == http.MethodPut {
@@ -118,10 +118,10 @@ func main() {
 		
 		// Wrap admin endpoints with admin role requirement
 		if cfg.AuthConfig != nil && cfg.AuthConfig.EnableAuth {
-			mux.Handle("/api/admin/", authenticator.RequireRole("admin")(adminMux))
+			mux.Handle("/kubechronicle/api/admin/", authenticator.RequireRole("admin")(adminMux))
 		} else {
 			// If auth is disabled, allow all (for development)
-			mux.Handle("/api/admin/", adminMux)
+			mux.Handle("/kubechronicle/api/admin/", adminMux)
 		}
 	}
 	
@@ -132,7 +132,7 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			w.Header().Set("Content-Type", "text/plain")
-			message := "kubechronicle API server\n\nEndpoints:\n  POST /api/auth/login\n  GET /api/changes\n  GET /api/changes/{id}\n  GET /api/resources/{kind}/{namespace}/{name}/history\n  GET /api/users/{username}/activity\n  GET /health\n"
+			message := "kubechronicle API server\n\nEndpoints:\n  POST /kubechronicle/api/auth/login\n  GET /kubechronicle/api/changes\n  GET /kubechronicle/api/changes/{id}\n  GET /kubechronicle/api/resources/{kind}/{namespace}/{name}/history\n  GET /kubechronicle/api/users/{username}/activity\n  GET /health\n"
 			w.Write([]byte(message))
 		} else {
 			http.NotFound(w, r)
