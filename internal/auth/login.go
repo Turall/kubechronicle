@@ -34,6 +34,12 @@ func NewLoginHandler(auth *Authenticator) *LoginHandler {
 
 // HandleLogin handles POST /api/auth/login requests.
 func (h *LoginHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	// Handle CORS preflight requests
+	if r.Method == http.MethodOptions {
+		h.handleOptions(w, r)
+		return
+	}
+	
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -81,5 +87,16 @@ func (h *LoginHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 	json.NewEncoder(w).Encode(response)
+}
+
+// handleOptions handles CORS preflight requests.
+func (h *LoginHandler) handleOptions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.WriteHeader(http.StatusOK)
 }

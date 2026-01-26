@@ -298,3 +298,134 @@ func TestParseList(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadConfig_AuthConfig_Disabled(t *testing.T) {
+	os.Clearenv()
+	defer os.Clearenv()
+
+	cfg := LoadConfig()
+
+	if cfg.AuthConfig != nil {
+		t.Error("AuthConfig should be nil when AUTH_ENABLED is not set")
+	}
+}
+
+func TestLoadConfig_AuthConfig_Enabled(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("AUTH_ENABLED", "true")
+	os.Setenv("JWT_SECRET", "test-secret-key")
+	os.Setenv("JWT_EXPIRATION_HOURS", "12")
+	defer func() {
+		os.Unsetenv("AUTH_ENABLED")
+		os.Unsetenv("JWT_SECRET")
+		os.Unsetenv("JWT_EXPIRATION_HOURS")
+	}()
+
+	cfg := LoadConfig()
+
+	if cfg.AuthConfig == nil {
+		t.Fatal("AuthConfig should not be nil when AUTH_ENABLED is true")
+	}
+	if !cfg.AuthConfig.EnableAuth {
+		t.Error("EnableAuth should be true")
+	}
+	if cfg.AuthConfig.JWTSecret != "test-secret-key" {
+		t.Errorf("JWTSecret = %s, want test-secret-key", cfg.AuthConfig.JWTSecret)
+	}
+	if cfg.AuthConfig.JWTExpirationHours != 12 {
+		t.Errorf("JWTExpirationHours = %d, want 12", cfg.AuthConfig.JWTExpirationHours)
+	}
+}
+
+func TestLoadConfig_AuthConfig_EnabledWithOne(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("AUTH_ENABLED", "1")
+	os.Setenv("JWT_SECRET", "test-secret")
+	defer func() {
+		os.Unsetenv("AUTH_ENABLED")
+		os.Unsetenv("JWT_SECRET")
+	}()
+
+	cfg := LoadConfig()
+
+	if cfg.AuthConfig == nil {
+		t.Fatal("AuthConfig should not be nil when AUTH_ENABLED is 1")
+	}
+	if !cfg.AuthConfig.EnableAuth {
+		t.Error("EnableAuth should be true")
+	}
+}
+
+func TestLoadConfig_AuthConfig_DefaultExpiration(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("AUTH_ENABLED", "true")
+	os.Setenv("JWT_SECRET", "test-secret")
+	defer func() {
+		os.Unsetenv("AUTH_ENABLED")
+		os.Unsetenv("JWT_SECRET")
+	}()
+
+	cfg := LoadConfig()
+
+	if cfg.AuthConfig.JWTExpirationHours != 24 {
+		t.Errorf("JWTExpirationHours = %d, want 24 (default)", cfg.AuthConfig.JWTExpirationHours)
+	}
+}
+
+func TestLoadConfig_AuthConfig_InvalidExpiration(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("AUTH_ENABLED", "true")
+	os.Setenv("JWT_SECRET", "test-secret")
+	os.Setenv("JWT_EXPIRATION_HOURS", "invalid")
+	defer func() {
+		os.Unsetenv("AUTH_ENABLED")
+		os.Unsetenv("JWT_SECRET")
+		os.Unsetenv("JWT_EXPIRATION_HOURS")
+	}()
+
+	cfg := LoadConfig()
+
+	if cfg.AuthConfig.JWTExpirationHours != 24 {
+		t.Errorf("JWTExpirationHours = %d, want 24 (default for invalid)", cfg.AuthConfig.JWTExpirationHours)
+	}
+}
+
+func TestLoadConfig_AuthConfig_WithUsers(t *testing.T) {
+	os.Clearenv()
+	usersJSON := `{
+		"user1": {
+			"password": "$2a$10$test",
+			"roles": ["viewer"],
+			"email": "user1@example.com"
+		}
+	}`
+	os.Setenv("AUTH_ENABLED", "true")
+	os.Setenv("JWT_SECRET", "test-secret")
+	os.Setenv("AUTH_USERS", usersJSON)
+	defer func() {
+		os.Unsetenv("AUTH_ENABLED")
+		os.Unsetenv("JWT_SECRET")
+		os.Unsetenv("AUTH_USERS")
+	}()
+
+	cfg := LoadConfig()
+
+	if cfg.AuthConfig.UsersJSON != usersJSON {
+		t.Errorf("UsersJSON mismatch")
+	}
+}
+
+func TestLoadConfig_AuthConfig_NoSecret(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("AUTH_ENABLED", "true")
+	defer os.Unsetenv("AUTH_ENABLED")
+
+	cfg := LoadConfig()
+
+	if cfg.AuthConfig == nil {
+		t.Fatal("AuthConfig should be created even without JWT_SECRET")
+	}
+	if cfg.AuthConfig.JWTSecret != "" {
+		t.Error("JWTSecret should be empty when not set")
+	}
+}

@@ -16,13 +16,13 @@ import (
 
 // PatternsHandler handles admin endpoints for managing ignore and block patterns.
 type PatternsHandler struct {
-	clientset  *kubernetes.Clientset
+	clientset  kubernetes.Interface
 	namespace  string
 	configMapName string
 }
 
 // NewPatternsHandler creates a new patterns handler.
-func NewPatternsHandler(clientset *kubernetes.Clientset, namespace, configMapName string) *PatternsHandler {
+func NewPatternsHandler(clientset kubernetes.Interface, namespace, configMapName string) *PatternsHandler {
 	return &PatternsHandler{
 		clientset:     clientset,
 		namespace:     namespace,
