@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/kubechronicle/kubechronicle/internal/config"
 	"github.com/kubechronicle/kubechronicle/internal/model"
 	"github.com/kubechronicle/kubechronicle/internal/store"
 )
@@ -479,8 +482,8 @@ func TestReadBody_NilBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readBody() with nil body error = %v", err)
 	}
-	if body != nil && len(body) != 0 {
-		t.Errorf("readBody() with nil body = %v, want nil or empty", body)
+	if len(body) != 0 {
+		t.Errorf("readBody() with nil body = %v, want empty", body)
 	}
 }
 
@@ -538,5 +541,388 @@ func TestHandler_SendResponse(t *testing.T) {
 
 	if !response.Response.Allowed {
 		t.Error("Response.Allowed should be true")
+	}
+}
+
+func TestHandler_GetIgnoreConfig(t *testing.T) {
+	ignoreConfig := &config.IgnoreConfig{
+		NamespacePatterns: []string{"kube-*"},
+		NamePatterns:     []string{"test-*"},
+	}
+	handler := NewHandler(nil, nil, ignoreConfig, nil)
+
+	// Test thread-safe getter
+	retrieved := handler.getIgnoreConfig()
+	if retrieved == nil {
+		t.Fatal("getIgnoreConfig() returned nil")
+	}
+	if len(retrieved.NamespacePatterns) != 1 || retrieved.NamespacePatterns[0] != "kube-*" {
+		t.Errorf("getIgnoreConfig() = %v, want namespace_patterns=[kube-*]", retrieved.NamespacePatterns)
+	}
+	if len(retrieved.NamePatterns) != 1 || retrieved.NamePatterns[0] != "test-*" {
+		t.Errorf("getIgnoreConfig() = %v, want name_patterns=[test-*]", retrieved.NamePatterns)
+	}
+}
+
+func TestHandler_GetBlockConfig(t *testing.T) {
+	blockConfig := &config.BlockConfig{
+		NamePatterns:      []string{"block-*"},
+		OperationPatterns: []string{"DELETE"},
+		Message:           "Custom block message",
+	}
+	handler := NewHandler(nil, nil, nil, blockConfig)
+
+	// Test thread-safe getter
+	retrieved := handler.getBlockConfig()
+	if retrieved == nil {
+		t.Fatal("getBlockConfig() returned nil")
+	}
+	if len(retrieved.NamePatterns) != 1 || retrieved.NamePatterns[0] != "block-*" {
+		t.Errorf("getBlockConfig() = %v, want name_patterns=[block-*]", retrieved.NamePatterns)
+	}
+	if len(retrieved.OperationPatterns) != 1 || retrieved.OperationPatterns[0] != "DELETE" {
+		t.Errorf("getBlockConfig() = %v, want operation_patterns=[DELETE]", retrieved.OperationPatterns)
+	}
+	if retrieved.Message != "Custom block message" {
+		t.Errorf("getBlockConfig() message = %q, want %q", retrieved.Message, "Custom block message")
+	}
+}
+
+func TestHandler_ReloadConfig_FromFiles(t *testing.T) {
+	// Create temporary directory for config files
+	tmpDir, err := os.MkdirTemp("", "kubechronicle-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create initial config files
+	ignoreConfigPath := filepath.Join(tmpDir, "IGNORE_CONFIG")
+	blockConfigPath := filepath.Join(tmpDir, "BLOCK_CONFIG")
+
+	initialIgnoreConfig := config.IgnoreConfig{
+		NamespacePatterns: []string{"kube-*"},
+		NamePatterns:      []string{"test-*"},
+	}
+	initialBlockConfig := config.BlockConfig{
+		NamePatterns:      []string{"block-*"},
+		OperationPatterns: []string{"DELETE"},
+		Message:           "Initial message",
+	}
+
+	ignoreJSON, _ := json.Marshal(initialIgnoreConfig)
+	blockJSON, _ := json.Marshal(initialBlockConfig)
+
+	if err := os.WriteFile(ignoreConfigPath, ignoreJSON, 0644); err != nil {
+		t.Fatalf("Failed to write ignore config: %v", err)
+	}
+	if err := os.WriteFile(blockConfigPath, blockJSON, 0644); err != nil {
+		t.Fatalf("Failed to write block config: %v", err)
+	}
+
+	// Create handler with config path
+	handler := NewHandler(nil, nil, nil, nil)
+	handler.configPath = tmpDir
+
+	// Reload config
+	handler.reloadConfig()
+
+	// Verify config was loaded
+	ignoreConfig := handler.getIgnoreConfig()
+	if ignoreConfig == nil {
+		t.Fatal("Ignore config should be loaded")
+	}
+	if len(ignoreConfig.NamespacePatterns) != 1 || ignoreConfig.NamespacePatterns[0] != "kube-*" {
+		t.Errorf("Reloaded ignore config namespace_patterns = %v, want [kube-*]", ignoreConfig.NamespacePatterns)
+	}
+
+	blockConfig := handler.getBlockConfig()
+	if blockConfig == nil {
+		t.Fatal("Block config should be loaded")
+	}
+	if len(blockConfig.NamePatterns) != 1 || blockConfig.NamePatterns[0] != "block-*" {
+		t.Errorf("Reloaded block config name_patterns = %v, want [block-*]", blockConfig.NamePatterns)
+	}
+	if blockConfig.Message != "Initial message" {
+		t.Errorf("Reloaded block config message = %q, want %q", blockConfig.Message, "Initial message")
+	}
+
+	// Update config files
+	updatedIgnoreConfig := config.IgnoreConfig{
+		NamespacePatterns: []string{"kube-*", "cert-manager"},
+		NamePatterns:      []string{"test-*", "updated-*"},
+	}
+	updatedBlockConfig := config.BlockConfig{
+		NamePatterns:      []string{"block-*", "critical-*"},
+		OperationPatterns: []string{"DELETE", "UPDATE"},
+		Message:           "Updated message",
+	}
+
+	updatedIgnoreJSON, _ := json.Marshal(updatedIgnoreConfig)
+	updatedBlockJSON, _ := json.Marshal(updatedBlockConfig)
+
+	if err := os.WriteFile(ignoreConfigPath, updatedIgnoreJSON, 0644); err != nil {
+		t.Fatalf("Failed to write updated ignore config: %v", err)
+	}
+	if err := os.WriteFile(blockConfigPath, updatedBlockJSON, 0644); err != nil {
+		t.Fatalf("Failed to write updated block config: %v", err)
+	}
+
+	// Reload again
+	handler.reloadConfig()
+
+	// Verify updated config
+	ignoreConfig = handler.getIgnoreConfig()
+	if len(ignoreConfig.NamespacePatterns) != 2 {
+		t.Errorf("Updated ignore config namespace_patterns = %v, want 2 items", ignoreConfig.NamespacePatterns)
+	}
+	if len(ignoreConfig.NamePatterns) != 2 {
+		t.Errorf("Updated ignore config name_patterns = %v, want 2 items", ignoreConfig.NamePatterns)
+	}
+
+	blockConfig = handler.getBlockConfig()
+	if len(blockConfig.NamePatterns) != 2 {
+		t.Errorf("Updated block config name_patterns = %v, want 2 items", blockConfig.NamePatterns)
+	}
+	if len(blockConfig.OperationPatterns) != 2 {
+		t.Errorf("Updated block config operation_patterns = %v, want 2 items", blockConfig.OperationPatterns)
+	}
+	if blockConfig.Message != "Updated message" {
+		t.Errorf("Updated block config message = %q, want %q", blockConfig.Message, "Updated message")
+	}
+}
+
+func TestHandler_ReloadConfig_MissingFiles(t *testing.T) {
+	// Create temporary directory without config files
+	tmpDir, err := os.MkdirTemp("", "kubechronicle-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create handler with initial config
+	initialIgnoreConfig := &config.IgnoreConfig{
+		NamespacePatterns: []string{"initial-*"},
+	}
+	initialBlockConfig := &config.BlockConfig{
+		NamePatterns: []string{"initial-*"},
+		Message:      "Initial",
+	}
+
+	handler := NewHandler(nil, nil, initialIgnoreConfig, initialBlockConfig)
+	handler.configPath = tmpDir
+
+	// Reload config (files don't exist)
+	handler.reloadConfig()
+
+	// Config should remain unchanged (not nil)
+	ignoreConfig := handler.getIgnoreConfig()
+	if ignoreConfig == nil {
+		t.Fatal("Ignore config should not be nil (should keep initial config)")
+	}
+	if len(ignoreConfig.NamespacePatterns) != 1 || ignoreConfig.NamespacePatterns[0] != "initial-*" {
+		t.Errorf("Ignore config should remain unchanged: %v", ignoreConfig.NamespacePatterns)
+	}
+
+	blockConfig := handler.getBlockConfig()
+	if blockConfig == nil {
+		t.Fatal("Block config should not be nil (should keep initial config)")
+	}
+	if len(blockConfig.NamePatterns) != 1 || blockConfig.NamePatterns[0] != "initial-*" {
+		t.Errorf("Block config should remain unchanged: %v", blockConfig.NamePatterns)
+	}
+}
+
+func TestHandler_ReloadConfig_InvalidJSON(t *testing.T) {
+	// Create temporary directory with invalid JSON files
+	tmpDir, err := os.MkdirTemp("", "kubechronicle-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	ignoreConfigPath := filepath.Join(tmpDir, "IGNORE_CONFIG")
+	blockConfigPath := filepath.Join(tmpDir, "BLOCK_CONFIG")
+
+	// Write invalid JSON
+	if err := os.WriteFile(ignoreConfigPath, []byte("invalid json"), 0644); err != nil {
+		t.Fatalf("Failed to write invalid ignore config: %v", err)
+	}
+	if err := os.WriteFile(blockConfigPath, []byte("not json"), 0644); err != nil {
+		t.Fatalf("Failed to write invalid block config: %v", err)
+	}
+
+	// Create handler with initial config
+	initialIgnoreConfig := &config.IgnoreConfig{
+		NamespacePatterns: []string{"initial-*"},
+	}
+	initialBlockConfig := &config.BlockConfig{
+		NamePatterns: []string{"initial-*"},
+	}
+
+	handler := NewHandler(nil, nil, initialIgnoreConfig, initialBlockConfig)
+	handler.configPath = tmpDir
+
+	// Reload config (should fail to parse but not crash)
+	handler.reloadConfig()
+
+	// Config should remain unchanged
+	ignoreConfig := handler.getIgnoreConfig()
+	if ignoreConfig == nil || len(ignoreConfig.NamespacePatterns) != 1 {
+		t.Error("Ignore config should remain unchanged after invalid JSON")
+	}
+
+	blockConfig := handler.getBlockConfig()
+	if blockConfig == nil || len(blockConfig.NamePatterns) != 1 {
+		t.Error("Block config should remain unchanged after invalid JSON")
+	}
+}
+
+func TestHandler_ReloadConfig_EmptyBlockMessage(t *testing.T) {
+	// Create temporary directory
+	tmpDir, err := os.MkdirTemp("", "kubechronicle-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	blockConfigPath := filepath.Join(tmpDir, "BLOCK_CONFIG")
+
+	// Create block config without message
+	blockConfig := config.BlockConfig{
+		NamePatterns: []string{"test-*"},
+	}
+	blockJSON, _ := json.Marshal(blockConfig)
+
+	if err := os.WriteFile(blockConfigPath, blockJSON, 0644); err != nil {
+		t.Fatalf("Failed to write block config: %v", err)
+	}
+
+	handler := NewHandler(nil, nil, nil, nil)
+	handler.configPath = tmpDir
+
+	// Reload config
+	handler.reloadConfig()
+
+	// Verify default message was set
+	reloaded := handler.getBlockConfig()
+	if reloaded == nil {
+		t.Fatal("Block config should be loaded")
+	}
+	if reloaded.Message == "" {
+		t.Error("Block config message should have default value")
+	}
+	if reloaded.Message != "Resource blocked by kubechronicle policy" {
+		t.Errorf("Block config message = %q, want default message", reloaded.Message)
+	}
+}
+
+func TestHandler_ReloadConfigPeriodically(t *testing.T) {
+	// Create temporary directory
+	tmpDir, err := os.MkdirTemp("", "kubechronicle-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	ignoreConfigPath := filepath.Join(tmpDir, "IGNORE_CONFIG")
+	blockConfigPath := filepath.Join(tmpDir, "BLOCK_CONFIG")
+
+	// Create initial config files
+	initialIgnoreConfig := config.IgnoreConfig{
+		NamespacePatterns: []string{"initial-*"},
+	}
+	initialBlockConfig := config.BlockConfig{
+		NamePatterns: []string{"initial-*"},
+	}
+
+	ignoreJSON, _ := json.Marshal(initialIgnoreConfig)
+	blockJSON, _ := json.Marshal(initialBlockConfig)
+
+	if err := os.WriteFile(ignoreConfigPath, ignoreJSON, 0644); err != nil {
+		t.Fatalf("Failed to write ignore config: %v", err)
+	}
+	if err := os.WriteFile(blockConfigPath, blockJSON, 0644); err != nil {
+		t.Fatalf("Failed to write block config: %v", err)
+	}
+
+	handler := NewHandler(nil, nil, nil, nil)
+	handler.configPath = tmpDir
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start periodic reloader with shorter interval for testing
+	// We'll manually trigger reloads instead of waiting 30 seconds
+	go handler.reloadConfigPeriodically(ctx)
+
+	// Initial reload
+	handler.reloadConfig()
+
+	// Verify initial config
+	ignoreConfig := handler.getIgnoreConfig()
+	if ignoreConfig == nil || len(ignoreConfig.NamespacePatterns) != 1 {
+		t.Error("Initial ignore config should be loaded")
+	}
+
+	// Update config files
+	updatedIgnoreConfig := config.IgnoreConfig{
+		NamespacePatterns: []string{"updated-*"},
+	}
+	updatedIgnoreJSON, _ := json.Marshal(updatedIgnoreConfig)
+	if err := os.WriteFile(ignoreConfigPath, updatedIgnoreJSON, 0644); err != nil {
+		t.Fatalf("Failed to write updated ignore config: %v", err)
+	}
+
+	// Manually trigger reload (simulating periodic reload)
+	handler.reloadConfig()
+
+	// Verify updated config
+	ignoreConfig = handler.getIgnoreConfig()
+	if ignoreConfig == nil || len(ignoreConfig.NamespacePatterns) != 1 || ignoreConfig.NamespacePatterns[0] != "updated-*" {
+		t.Errorf("Updated ignore config = %v, want [updated-*]", ignoreConfig.NamespacePatterns)
+	}
+
+	// Cancel context to stop reloader
+	cancel()
+	time.Sleep(50 * time.Millisecond) // Give goroutine time to exit
+}
+
+func TestHandler_GetConfig_ThreadSafety(t *testing.T) {
+	ignoreConfig := &config.IgnoreConfig{
+		NamespacePatterns: []string{"test-*"},
+	}
+	blockConfig := &config.BlockConfig{
+		NamePatterns: []string{"block-*"},
+	}
+
+	handler := NewHandler(nil, nil, ignoreConfig, blockConfig)
+
+	// Test concurrent access
+	done := make(chan bool)
+	for i := 0; i < 10; i++ {
+		go func() {
+			for j := 0; j < 100; j++ {
+				_ = handler.getIgnoreConfig()
+				_ = handler.getBlockConfig()
+			}
+			done <- true
+		}()
+	}
+
+	// Wait for all goroutines to complete
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+
+	// Verify config is still accessible
+	ignoreConfig = handler.getIgnoreConfig()
+	if ignoreConfig == nil {
+		t.Fatal("Ignore config should still be accessible after concurrent access")
+	}
+
+	blockConfig = handler.getBlockConfig()
+	if blockConfig == nil {
+		t.Fatal("Block config should still be accessible after concurrent access")
 	}
 }

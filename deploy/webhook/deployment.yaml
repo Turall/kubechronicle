@@ -55,13 +55,12 @@ spec:
             configMapKeyRef:
               name: kubechronicle-patterns
               key: IGNORE_CONFIG
-              optional: true
         - name: BLOCK_CONFIG
           valueFrom:
             configMapKeyRef:
               name: kubechronicle-patterns
               key: BLOCK_CONFIG
-              optional: true
+              
         - name: PATTERNS_CONFIGMAP_PATH
           value: /etc/patterns
         volumeMounts:
