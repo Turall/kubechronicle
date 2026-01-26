@@ -34,20 +34,23 @@ func NewLoginHandler(auth *Authenticator) *LoginHandler {
 
 // HandleLogin handles POST /api/auth/login requests.
 func (h *LoginHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers on all responses
+	h.setCORSHeaders(w)
+	
 	// Handle CORS preflight requests
 	if r.Method == http.MethodOptions {
-		h.handleOptions(w, r)
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 	
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.sendError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -55,14 +58,14 @@ func (h *LoginHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	userInfo, ok := h.auth.config.Users[req.Username]
 	if !ok {
 		klog.V(2).Infof("Login attempt with unknown username: %s", req.Username)
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		h.sendError(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
 	// Check password
 	if err := bcrypt.CompareHashAndPassword([]byte(userInfo.Password), []byte(req.Password)); err != nil {
 		klog.V(2).Infof("Login attempt with invalid password for user: %s", req.Username)
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		h.sendError(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
@@ -76,7 +79,7 @@ func (h *LoginHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	token, err := h.auth.GenerateToken(user)
 	if err != nil {
 		klog.Errorf("Failed to generate token: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		h.sendError(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -87,16 +90,19 @@ func (h *LoginHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 	json.NewEncoder(w).Encode(response)
 }
 
-// handleOptions handles CORS preflight requests.
-func (h *LoginHandler) handleOptions(w http.ResponseWriter, r *http.Request) {
+// setCORSHeaders sets CORS headers on the response.
+func (h *LoginHandler) setCORSHeaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-	w.WriteHeader(http.StatusOK)
+}
+
+// sendError sends an error response with CORS headers.
+func (h *LoginHandler) sendError(w http.ResponseWriter, message string, code int) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(code)
+	w.Write([]byte(message))
 }
