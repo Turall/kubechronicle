@@ -4,7 +4,7 @@ This guide explains how to set up and run kubechronicle locally for development.
 
 ## Prerequisites
 
-- **Go 1.21 or later**: [Install Go](https://golang.org/doc/install)
+- **Go 1.25 or later**: [Install Go](https://golang.org/doc/install)
 - **kubectl**: For testing with Kubernetes (optional)
 - **PostgreSQL**: Optional, for testing storage layer
 - **openssl**: For generating TLS certificates

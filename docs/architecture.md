@@ -541,7 +541,7 @@ cmd/webhook
 
 ## Technology Stack
 
-- **Language**: Go 1.21+
+- **Language**: Go 1.25+
 - **Kubernetes**: client-go, apimachinery, controller-runtime
 - **Database**: PostgreSQL 12+ with JSONB
 - **HTTP**: Standard library `net/http`
