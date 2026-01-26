@@ -2,6 +2,8 @@
 
 kubechronicle provides a **human-readable, queryable history of Kubernetes resource changes**.
 
+**⚠️ Warning:** Do not use it in Prod environment, it is under development
+
 ## Features
 
 - **Tracks WHO** changed a resource (username, groups, service account, source IP)

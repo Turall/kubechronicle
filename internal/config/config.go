@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 
 	"k8s.io/klog/v2"
@@ -20,6 +21,22 @@ type Config struct {
 	AlertConfig  *alerting.Config
 	IgnoreConfig *IgnoreConfig
 	BlockConfig  *BlockConfig
+	AuthConfig   *AuthConfig
+}
+
+// AuthConfig holds authentication configuration.
+type AuthConfig struct {
+	// EnableAuth enables authentication (if false, all requests are allowed)
+	EnableAuth bool `json:"enable_auth,omitempty"`
+	
+	// JWTSecret is the secret key for signing JWT tokens
+	JWTSecret string `json:"jwt_secret,omitempty"`
+	
+	// JWTExpirationHours is the token expiration time in hours (default: 24)
+	JWTExpirationHours int `json:"jwt_expiration_hours,omitempty"`
+	
+	// Users is a map of username -> user info (JSON format)
+	UsersJSON string `json:"users_json,omitempty"`
 }
 
 // IgnoreConfig holds ignore pattern configuration.
@@ -128,6 +145,33 @@ func LoadConfig() *Config {
 		} else {
 			klog.Warningf("Failed to parse BLOCK_CONFIG JSON: %v, raw value: %q", err, blockJSON)
 		}
+	}
+
+	// Load auth configuration if provided
+	if enableAuth := getEnv("AUTH_ENABLED", ""); enableAuth == "true" || enableAuth == "1" {
+		authConfig := &AuthConfig{
+			EnableAuth: true,
+		}
+		
+		// JWT Secret (required if auth is enabled)
+		authConfig.JWTSecret = getEnv("JWT_SECRET", "")
+		if authConfig.JWTSecret == "" {
+			klog.Warning("AUTH_ENABLED is true but JWT_SECRET is not set. Authentication may not work correctly.")
+		}
+		
+		// JWT Expiration (default: 24 hours)
+		expHours := getEnv("JWT_EXPIRATION_HOURS", "24")
+		if hours, err := strconv.Atoi(expHours); err == nil && hours > 0 {
+			authConfig.JWTExpirationHours = hours
+		} else {
+			authConfig.JWTExpirationHours = 24
+		}
+		
+		// Users configuration
+		authConfig.UsersJSON = getEnv("AUTH_USERS", "")
+		
+		cfg.AuthConfig = authConfig
+		klog.Infof("Authentication enabled: JWT expiration=%d hours", authConfig.JWTExpirationHours)
 	}
 
 	return cfg

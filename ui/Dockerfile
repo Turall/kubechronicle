@@ -12,6 +12,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Set API URL (can be overridden with build arg)
+ARG VITE_API_URL=http://kubechronicle-api:80
+ENV VITE_API_URL=${VITE_API_URL}
+
 # Build for production
 RUN npm run build
 

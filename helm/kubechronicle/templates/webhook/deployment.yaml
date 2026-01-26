@@ -1,0 +1,92 @@
+{{- if .Values.webhook.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubechronicle.fullname" . }}-webhook
+  namespace: {{ include "kubechronicle.namespace" . }}
+  labels:
+    {{- include "kubechronicle.componentLabels" (list . "webhook") | nindent 4 }}
+spec:
+  replicas: {{ .Values.webhook.replicas }}
+  selector:
+    matchLabels:
+      {{- include "kubechronicle.componentSelectorLabels" (list . "webhook") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kubechronicle.componentSelectorLabels" (list . "webhook") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "kubechronicle.serviceAccountName" . }}
+      {{- include "kubechronicle.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        {{- toYaml .Values.webhook.securityContext | nindent 8 }}
+      containers:
+      - name: webhook
+        image: "{{ include "kubechronicle.imageRegistry" . }}{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}"
+        imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
+        ports:
+        - name: https
+          containerPort: {{ .Values.webhook.service.targetPort }}
+          protocol: TCP
+        env:
+        {{- if .Values.webhook.database.optional }}
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.webhook.database.secretName }}
+              key: {{ .Values.webhook.database.secretKey }}
+              optional: {{ .Values.webhook.database.optional }}
+        {{- else if .Values.webhook.database.secretName }}
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.webhook.database.secretName }}
+              key: {{ .Values.webhook.database.secretKey }}
+        {{- end }}
+        - name: TLS_CERT_PATH
+          value: /etc/webhook/certs/tls.crt
+        - name: TLS_KEY_PATH
+          value: /etc/webhook/certs/tls.key
+        {{- range $key, $value := .Values.webhook.env }}
+        {{- if $value }}
+        - name: {{ $key }}
+          {{- if kindIs "map" $value }}
+          value: |
+{{ toJson $value | indent 12 }}
+          {{- else if kindIs "string" $value }}
+          value: {{ $value | quote }}
+          {{- else }}
+          value: {{ $value | toJson | quote }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.api.enabled }}
+        # Load patterns from ConfigMap (can be overridden by webhook.env)
+        - name: IGNORE_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.patterns.configMapName }}
+              key: IGNORE_CONFIG
+              optional: true
+        - name: BLOCK_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.patterns.configMapName }}
+              key: BLOCK_CONFIG
+              optional: true
+        {{- end }}
+        volumeMounts:
+        - name: webhook-certs
+          mountPath: /etc/webhook/certs
+          readOnly: true
+        resources:
+          {{- toYaml .Values.webhook.resources | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.webhook.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.webhook.readinessProbe | nindent 10 }}
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: {{ .Values.webhook.tls.secretName }}
+{{- end }}

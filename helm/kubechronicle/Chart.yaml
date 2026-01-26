@@ -1,0 +1,16 @@
+apiVersion: v2
+name: kubechronicle
+description: A Helm chart for kubechronicle - Kubernetes resource change tracking platform
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - kubernetes
+  - monitoring
+  - audit
+  - webhook
+home: https://github.com/kubechronicle/kubechronicle
+maintainers:
+  - name: kubechronicle
+sources:
+  - https://github.com/kubechronicle/kubechronicle

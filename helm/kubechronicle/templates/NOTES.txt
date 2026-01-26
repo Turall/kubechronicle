@@ -1,0 +1,61 @@
+1. Get the application URL by running these commands:
+{{- if .Values.ui.enabled }}
+{{- if contains "NodePort" .Values.ui.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ include "kubechronicle.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "kubechronicle.fullname" . }}-ui)
+  export NODE_IP=$(kubectl get nodes --namespace {{ include "kubechronicle.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.ui.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ include "kubechronicle.namespace" . }} svc -w {{ include "kubechronicle.fullname" . }}-ui'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ include "kubechronicle.namespace" . }} {{ include "kubechronicle.fullname" . }}-ui --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.ui.service.port }}
+{{- else if contains "ClusterIP" .Values.ui.service.type }}
+  kubectl port-forward --namespace {{ include "kubechronicle.namespace" . }} svc/{{ include "kubechronicle.fullname" . }}-ui {{ .Values.ui.service.port }}:{{ .Values.ui.service.port }}
+  echo "Visit http://127.0.0.1:{{ .Values.ui.service.port }} to use your application"
+{{- end }}
+{{- end }}
+
+2. Verify the deployment:
+   kubectl get pods --namespace {{ include "kubechronicle.namespace" . }}
+   kubectl get svc --namespace {{ include "kubechronicle.namespace" . }}
+
+3. Check webhook status:
+   kubectl get validatingwebhookconfiguration {{ include "kubechronicle.fullname" . }}-webhook
+
+4. View webhook logs:
+   kubectl logs --namespace {{ include "kubechronicle.namespace" . }} -l app.kubernetes.io/component=webhook
+
+5. View API logs:
+   kubectl logs --namespace {{ include "kubechronicle.namespace" . }} -l app.kubernetes.io/component=api
+
+{{- if .Values.webhook.enabled }}
+{{- if not .Values.webhook.tls.certManager.enabled }}
+{{- if not .Values.webhook.admission.caBundle }}
+6. IMPORTANT: TLS Certificate Setup
+   
+   The webhook requires TLS certificates. You have two options:
+   
+   Option A: Use cert-manager (recommended for production)
+   - Set webhook.tls.certManager.enabled=true in values.yaml
+   - Ensure cert-manager is installed in your cluster
+   
+   Option B: Use self-signed certificates
+   - Generate certificates using the script:
+     cd deploy/webhook && ./generate-certs.sh
+   - Create a secret:
+     kubectl create secret tls {{ .Values.webhook.tls.secretName }} \
+       --cert=deploy/webhook/tls.crt \
+       --key=deploy/webhook/tls.key \
+       --namespace {{ include "kubechronicle.namespace" . }}
+   - Update the caBundle in values.yaml with the base64-encoded certificate:
+     cat deploy/webhook/tls.crt | base64
+   - Upgrade the Helm release with the updated caBundle
+{{- end }}
+{{- end }}
+{{- end }}
+
+7. Database Setup:
+   Create a secret with your database URL:
+   kubectl create secret generic {{ .Values.api.database.secretName }} \
+     --from-literal=url="postgres://user:password@host:5432/kubechronicle" \
+     --namespace {{ include "kubechronicle.namespace" . }}

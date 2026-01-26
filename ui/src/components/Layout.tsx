@@ -1,8 +1,17 @@
 import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
-import { History } from 'lucide-react';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { History, User, LogOut, LogIn } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Layout: React.FC = () => {
+  const { user, logout, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans">
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
@@ -17,11 +26,42 @@ export const Layout: React.FC = () => {
                 <Link to="/" className="text-sm font-medium text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-white">
                   Timeline
                 </Link>
-                {/* Add more nav links if needed */}
+                {isAdmin && (
+                  <Link to="/patterns" className="text-sm font-medium text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-white">
+                    Patterns
+                  </Link>
+                )}
               </nav>
             </div>
-            <div>
-              {/* User profile or Theme toggle can go here */}
+            <div className="flex items-center gap-4">
+              {user && user.username !== 'anonymous' ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <User size={16} />
+                    <span>{user.username}</span>
+                    {user.roles && user.roles.length > 0 && (
+                      <span className="px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded">
+                        {user.roles.join(', ')}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  <LogIn size={16} />
+                  Login
+                </Link>
+              )}
             </div>
           </div>
         </div>

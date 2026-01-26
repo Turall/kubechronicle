@@ -1,0 +1,18 @@
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kubechronicle.apiServiceName" . }}
+  namespace: {{ include "kubechronicle.namespace" . }}
+  labels:
+    {{- include "kubechronicle.componentLabels" (list . "api") | nindent 4 }}
+spec:
+  type: {{ .Values.api.service.type }}
+  ports:
+  - port: {{ .Values.api.service.port }}
+    targetPort: {{ .Values.api.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "kubechronicle.componentSelectorLabels" (list . "api") | nindent 4 }}
+{{- end }}

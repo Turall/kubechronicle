@@ -1,0 +1,67 @@
+{{- if .Values.api.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubechronicle.fullname" . }}-api
+  namespace: {{ include "kubechronicle.namespace" . }}
+  labels:
+    {{- include "kubechronicle.componentLabels" (list . "api") | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      {{- include "kubechronicle.componentSelectorLabels" (list . "api") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kubechronicle.componentSelectorLabels" (list . "api") | nindent 8 }}
+    spec:
+      {{- if .Values.patterns.rbac.create }}
+      serviceAccountName: {{ include "kubechronicle.fullname" . }}-api
+      {{- end }}
+      {{- include "kubechronicle.imagePullSecrets" . | nindent 6 }}
+      containers:
+      - name: api
+        image: "{{ include "kubechronicle.imageRegistry" . }}{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+        imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.api.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.api.database.secretName }}
+              key: {{ .Values.api.database.secretKey }}
+        - name: NAMESPACE
+          value: {{ include "kubechronicle.namespace" . | quote }}
+        - name: PATTERNS_CONFIGMAP_NAME
+          value: {{ .Values.patterns.configMapName | quote }}
+        {{- if .Values.api.auth.enabled }}
+        - name: AUTH_ENABLED
+          value: "true"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.api.auth.jwtSecret.secretName }}
+              key: {{ .Values.api.auth.jwtSecret.secretKey }}
+        - name: JWT_EXPIRATION_HOURS
+          value: {{ .Values.api.auth.jwtExpirationHours | quote }}
+        - name: AUTH_USERS
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.api.auth.users.secretName }}
+              key: {{ .Values.api.auth.users.secretKey }}
+        {{- end }}
+        {{- range $key, $value := .Values.api.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        livenessProbe:
+          {{- toYaml .Values.api.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.api.readinessProbe | nindent 10 }}
+        resources:
+          {{- toYaml .Values.api.resources | nindent 10 }}
+{{- end }}

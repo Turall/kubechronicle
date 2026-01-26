@@ -1,0 +1,18 @@
+{{- if .Values.webhook.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kubechronicle.webhookServiceName" . }}
+  namespace: {{ include "kubechronicle.namespace" . }}
+  labels:
+    {{- include "kubechronicle.componentLabels" (list . "webhook") | nindent 4 }}
+spec:
+  type: {{ .Values.webhook.service.type }}
+  ports:
+  - port: {{ .Values.webhook.service.port }}
+    targetPort: {{ .Values.webhook.service.targetPort }}
+    protocol: TCP
+    name: https
+  selector:
+    {{- include "kubechronicle.componentSelectorLabels" (list . "webhook") | nindent 4 }}
+{{- end }}

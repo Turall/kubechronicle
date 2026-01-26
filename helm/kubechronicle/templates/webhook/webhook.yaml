@@ -1,0 +1,34 @@
+{{- if .Values.webhook.enabled }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "kubechronicle.fullname" . }}-webhook
+  labels:
+    {{- include "kubechronicle.componentLabels" (list . "webhook") | nindent 4 }}
+webhooks:
+- name: {{ include "kubechronicle.fullname" . }}.k8s.io
+  clientConfig:
+    service:
+      name: {{ include "kubechronicle.webhookServiceName" . }}
+      namespace: {{ include "kubechronicle.namespace" . }}
+      path: /validate
+    {{- if .Values.webhook.admission.caBundle }}
+    caBundle: {{ .Values.webhook.admission.caBundle }}
+    {{- else if .Values.webhook.tls.certManager.enabled }}
+    # caBundle will be populated by cert-manager
+    {{- else }}
+    # caBundle should be provided manually or via cert-manager
+    # For self-signed certs, populate this with base64-encoded certificate
+    caBundle: ""
+    {{- end }}
+  admissionReviewVersions: {{ .Values.webhook.admission.admissionReviewVersions | toJson }}
+  sideEffects: {{ .Values.webhook.admission.sideEffects }}
+  failurePolicy: {{ .Values.webhook.admission.failurePolicy }}
+  rules:
+  {{- range .Values.webhook.rules }}
+  - apiGroups: {{ .apiGroups | toJson }}
+    apiVersions: {{ .apiVersions | toJson }}
+    operations: {{ .operations | toJson }}
+    resources: {{ .resources | toJson }}
+  {{- end }}
+{{- end }}

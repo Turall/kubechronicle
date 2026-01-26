@@ -1,0 +1,26 @@
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.patterns.configMapName }}
+  namespace: {{ include "kubechronicle.namespace" . }}
+  labels:
+    {{- include "kubechronicle.labels" . | nindent 4 }}
+data:
+  # IGNORE_CONFIG and BLOCK_CONFIG will be managed via API
+  # Initial values can be set here or left empty
+  IGNORE_CONFIG: |
+    {
+      "namespace_patterns": [],
+      "name_patterns": [],
+      "resource_kind_patterns": []
+    }
+  BLOCK_CONFIG: |
+    {
+      "namespace_patterns": [],
+      "name_patterns": [],
+      "resource_kind_patterns": [],
+      "operation_patterns": [],
+      "message": "Resource blocked by kubechronicle policy"
+    }
+{{- end }}

@@ -1,0 +1,32 @@
+{{- if and .Values.api.enabled .Values.patterns.rbac.create }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "kubechronicle.fullname" . }}-api-patterns
+  namespace: {{ include "kubechronicle.namespace" . }}
+  labels:
+    {{- include "kubechronicle.componentLabels" (list . "api") | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["{{ .Values.patterns.configMapName }}"]
+  verbs: ["get", "list", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "kubechronicle.fullname" . }}-api-patterns
+  namespace: {{ include "kubechronicle.namespace" . }}
+  labels:
+    {{- include "kubechronicle.componentLabels" (list . "api") | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "kubechronicle.fullname" . }}-api-patterns
+subjects:
+- kind: ServiceAccount
+  name: {{ include "kubechronicle.fullname" . }}-api
+  namespace: {{ include "kubechronicle.namespace" . }}
+{{- end }}

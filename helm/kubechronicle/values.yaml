@@ -1,0 +1,249 @@
+# Default values for kubechronicle
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  namespace: kubechronicle
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# API component configuration
+api:
+  enabled: true
+  image:
+    repository: kubechronicle/api
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 2
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+  
+  env:
+    LOG_LEVEL: "info"
+  
+  # Database configuration
+  database:
+    # Secret name containing DATABASE_URL
+    secretName: kubechronicle-database
+    secretKey: url
+  
+  # Authentication configuration
+  auth:
+    # Enable authentication (set to true to require JWT tokens)
+    enabled: false
+    
+    # JWT secret (required if auth.enabled=true)
+    # Store in Secret: kubectl create secret generic kubechronicle-auth --from-literal=jwt-secret=<secret>
+    jwtSecret:
+      secretName: kubechronicle-auth
+      secretKey: jwt-secret
+    
+    # JWT token expiration in hours (default: 24)
+    jwtExpirationHours: 24
+    
+    # Users configuration (JSON format)
+    # Store in Secret: kubectl create secret generic kubechronicle-auth --from-literal=users='{"admin":{"password":"$2a$10$...","roles":["admin","viewer"],"email":"admin@example.com"}}'
+    users:
+      secretName: kubechronicle-auth
+      secretKey: users
+
+# UI component configuration
+ui:
+  enabled: true
+  image:
+    repository: kubechronicle/ui
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+
+# Webhook component configuration
+webhook:
+  enabled: true
+  image:
+    repository: kubechronicle/webhook
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 2
+  
+  service:
+    type: ClusterIP
+    port: 443
+    targetPort: 8443
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8443
+      scheme: HTTPS
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8443
+      scheme: HTTPS
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  
+  env:
+    LOG_LEVEL: "info"
+  
+  # Database configuration (optional for webhook)
+  database:
+    secretName: kubechronicle-database
+    secretKey: url
+    optional: true
+  
+  # TLS certificate configuration
+  tls:
+    secretName: kubechronicle-webhook-tls
+    certManager:
+      enabled: false
+      issuerRef:
+        name: kubechronicle-selfsigned-issuer
+        kind: ClusterIssuer
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  
+  # Webhook configuration rules
+  rules:
+    - apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["deployments"]
+    - apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["statefulsets"]
+    - apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["daemonsets"]
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["services"]
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["configmaps"]
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["secrets"]
+    - apiGroups: ["networking.k8s.io"]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["ingresses"]
+    - apiGroups: ["apiextensions.k8s.io"]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["customresourcedefinitions"]
+  
+  # Webhook admission configuration
+  admission:
+    failurePolicy: Ignore
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
+    caBundle: ""
+
+# ServiceAccount for webhook
+serviceAccount:
+  create: true
+  name: kubechronicle-webhook
+  annotations: {}
+
+# RBAC configuration
+rbac:
+  create: true
+
+# Namespace configuration
+namespace:
+  create: true
+  name: kubechronicle
+
+# Patterns configuration (for ignore/block patterns)
+patterns:
+  # ConfigMap name for storing patterns
+  configMapName: kubechronicle-patterns
+  # Enable RBAC for API server to manage ConfigMaps
+  rbac:
+    create: true
