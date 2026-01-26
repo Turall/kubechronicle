@@ -18,6 +18,8 @@ spec:
         app.kubernetes.io/name: kubechronicle
         app.kubernetes.io/component: webhook
     spec:
+      imagePullSecrets:
+        - name: do-registry-secret
       serviceAccountName: kubechronicle-webhook
       securityContext:
         runAsNonRoot: true
@@ -27,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: webhook
-        image: kubechronicle/webhook:latest
+        image: registry.digitalocean.com/kubechronicle/kubechronicle:e4b0d0d3d03807f7f2f0c0c0e9b8215bcf0c5c58
         imagePullPolicy: IfNotPresent
         ports:
         - name: https
@@ -46,24 +48,17 @@ spec:
           value: /etc/webhook/certs/tls.key
         - name: LOG_LEVEL
           value: "info"
+        # Load patterns from ConfigMap (can be overridden by setting these env vars directly)
         - name: IGNORE_CONFIG
-          value: |
-            {
-              "namespace_patterns": ["kube-*", "cert-manager"],
-              "name_patterns": ["*-controller", "*system*"],
-              "resource_kind_patterns": []
-            }
-          optional: true
+          valueFrom:
+            configMapKeyRef:
+              name: kubechronicle-patterns
+              key: IGNORE_CONFIG
         - name: BLOCK_CONFIG
-          value: |
-            {
-              "namespace_patterns": [],
-              "name_patterns": [],
-              "resource_kind_patterns": [],
-              "operation_patterns": [],
-              "message": "Resource blocked by kubechronicle policy"
-            }
-          optional: true
+          valueFrom:
+            configMapKeyRef:
+              name: kubechronicle-patterns
+              key: BLOCK_CONFIG
         volumeMounts:
         - name: webhook-certs
           mountPath: /etc/webhook/certs

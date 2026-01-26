@@ -1,0 +1,34 @@
+---
+# Role: Permissions for API server to manage patterns ConfigMap
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kubechronicle-api-patterns
+  namespace: kubechronicle
+  labels:
+    app.kubernetes.io/name: kubechronicle
+    app.kubernetes.io/component: api
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["kubechronicle-patterns"]
+  verbs: ["get", "list", "create", "update", "patch"]
+
+---
+# RoleBinding: Bind ServiceAccount to Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kubechronicle-api-patterns
+  namespace: kubechronicle
+  labels:
+    app.kubernetes.io/name: kubechronicle
+    app.kubernetes.io/component: api
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kubechronicle-api-patterns
+subjects:
+- kind: ServiceAccount
+  name: kubechronicle-api
+  namespace: kubechronicle

@@ -4,6 +4,8 @@ kind: Kustomization
 namespace: kubechronicle
 
 resources:
+  - serviceaccount.yaml
+  - rbac.yaml
   - deployment.yaml
   - service.yaml
 

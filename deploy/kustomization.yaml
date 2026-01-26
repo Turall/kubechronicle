@@ -1,0 +1,23 @@
+# Root kustomization for deploying all kubechronicle components
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kubechronicle
+
+resources:
+  # Patterns ConfigMap (shared by API and webhook)
+  - patterns-configmap.yaml
+  
+  # API component
+  - api/
+  
+  # UI component
+  - ui/
+  
+  # Webhook component
+  - webhook/
+
+# Common labels
+commonLabels:
+  app.kubernetes.io/name: kubechronicle
+  app.kubernetes.io/managed-by: kustomize
