@@ -16,9 +16,9 @@ import (
 
 // User represents an authenticated user.
 type User struct {
-	Username string
-	Roles    []string
-	Email    string
+	Username string   `json:"username"`
+	Roles    []string `json:"roles"`
+	Email    string   `json:"email,omitempty"`
 }
 
 // Claims represents JWT claims.

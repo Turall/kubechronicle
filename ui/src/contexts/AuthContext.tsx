@@ -44,8 +44,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     if (storedToken && storedUser) {
       try {
+        const parsedUser = JSON.parse(storedUser);
+        // Normalize user object to handle both lowercase and capitalized field names
+        const normalizedUser: User = {
+          username: parsedUser.username || parsedUser.Username || '',
+          roles: parsedUser.roles || parsedUser.Roles || [],
+          email: parsedUser.email || parsedUser.Email,
+        };
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        setUser(normalizedUser);
       } catch (err) {
         console.error('Failed to parse stored user:', err);
         localStorage.removeItem('auth_token');
@@ -59,11 +66,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const data = await apiLogin(username, password);
       setToken(data.token);
-      setUser(data.user);
+      
+      // Normalize user object to handle both lowercase and capitalized field names
+      const normalizedUser: User = {
+        username: data.user.username || (data.user as any).Username || '',
+        roles: data.user.roles || (data.user as any).Roles || [],
+        email: data.user.email || (data.user as any).Email,
+      };
+      
+      setUser(normalizedUser);
       
       // Store in localStorage
       localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('auth_user', JSON.stringify(data.user));
+      localStorage.setItem('auth_user', JSON.stringify(normalizedUser));
     } catch (err: any) {
       // If login endpoint doesn't exist (auth disabled), allow access
       if (err.response?.status === 404 || err.message?.includes('404') || err.message?.includes('Not Found')) {
