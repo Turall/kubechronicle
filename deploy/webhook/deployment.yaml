@@ -49,19 +49,27 @@ spec:
         - name: LOG_LEVEL
           value: "info"
         # Load patterns from ConfigMap (can be overridden by setting these env vars directly)
+        # Using env vars as fallback, but also mounting as volume for dynamic reloading
         - name: IGNORE_CONFIG
           valueFrom:
             configMapKeyRef:
               name: kubechronicle-patterns
               key: IGNORE_CONFIG
+              optional: true
         - name: BLOCK_CONFIG
           valueFrom:
             configMapKeyRef:
               name: kubechronicle-patterns
               key: BLOCK_CONFIG
+              optional: true
+        - name: PATTERNS_CONFIGMAP_PATH
+          value: /etc/patterns
         volumeMounts:
         - name: webhook-certs
           mountPath: /etc/webhook/certs
+          readOnly: true
+        - name: patterns-config
+          mountPath: /etc/patterns
           readOnly: true
         resources:
           requests:
@@ -92,3 +100,6 @@ spec:
       - name: webhook-certs
         secret:
           secretName: kubechronicle-webhook-tls
+      - name: patterns-config
+        configMap:
+          name: kubechronicle-patterns

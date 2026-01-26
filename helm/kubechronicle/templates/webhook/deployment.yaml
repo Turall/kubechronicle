@@ -62,6 +62,7 @@ spec:
         {{- end }}
         {{- if .Values.api.enabled }}
         # Load patterns from ConfigMap (can be overridden by webhook.env)
+        # Using env vars as fallback, but also mounting as volume for dynamic reloading
         - name: IGNORE_CONFIG
           valueFrom:
             configMapKeyRef:
@@ -74,11 +75,18 @@ spec:
               name: {{ .Values.patterns.configMapName }}
               key: BLOCK_CONFIG
               optional: true
+        - name: PATTERNS_CONFIGMAP_PATH
+          value: /etc/patterns
         {{- end }}
         volumeMounts:
         - name: webhook-certs
           mountPath: /etc/webhook/certs
           readOnly: true
+        {{- if .Values.api.enabled }}
+        - name: patterns-config
+          mountPath: /etc/patterns
+          readOnly: true
+        {{- end }}
         resources:
           {{- toYaml .Values.webhook.resources | nindent 10 }}
         livenessProbe:
@@ -89,4 +97,9 @@ spec:
       - name: webhook-certs
         secret:
           secretName: {{ .Values.webhook.tls.secretName }}
+      {{- if .Values.api.enabled }}
+      - name: patterns-config
+        configMap:
+          name: {{ .Values.patterns.configMapName }}
+      {{- end }}
 {{- end }}

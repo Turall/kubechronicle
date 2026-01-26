@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"sync"
 	"time"
 
 	admissionv1 "k8s.io/api/admission/v1"
@@ -27,6 +29,9 @@ type Handler struct {
 	ignoreConfig *config.IgnoreConfig
 	blockConfig  *config.BlockConfig
 	queue        chan *model.ChangeEvent
+	configPath   string // Path to ConfigMap mount (optional, for dynamic reloading)
+	configMutex  sync.RWMutex // Protects config updates
+	lastReload   time.Time
 }
 
 // NewHandler creates a new admission handler.
@@ -38,12 +43,99 @@ func NewHandler(store store.Store, alertRouter *alerting.Router, ignoreConfig *c
 		ignoreConfig: ignoreConfig,
 		blockConfig:  blockConfig,
 		queue:        make(chan *model.ChangeEvent, 1000), // Buffered channel for async processing
+		configPath:   getEnv("PATTERNS_CONFIGMAP_PATH", "/etc/patterns"), // Default mount path
+		lastReload:   time.Now(),
 	}
 }
 
-// Start starts the async event processing worker.
+// getEnv gets an environment variable or returns a default value.
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// reloadConfigPeriodically reloads config from mounted ConfigMap files every 30 seconds.
+func (h *Handler) reloadConfigPeriodically(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			h.reloadConfig()
+		}
+	}
+}
+
+// reloadConfig reloads ignore and block config from mounted ConfigMap files.
+func (h *Handler) reloadConfig() {
+	h.configMutex.Lock()
+	defer h.configMutex.Unlock()
+	
+	ignorePath := fmt.Sprintf("%s/IGNORE_CONFIG", h.configPath)
+	blockPath := fmt.Sprintf("%s/BLOCK_CONFIG", h.configPath)
+	
+	// Reload ignore config
+	if data, err := os.ReadFile(ignorePath); err == nil {
+		var ignoreConfig config.IgnoreConfig
+		if err := json.Unmarshal(data, &ignoreConfig); err == nil {
+			h.ignoreConfig = &ignoreConfig
+			klog.V(2).Infof("Reloaded ignore config: namespace_patterns=%v, name_patterns=%v, resource_kind_patterns=%v",
+				ignoreConfig.NamespacePatterns, ignoreConfig.NamePatterns, ignoreConfig.ResourceKindPatterns)
+			h.lastReload = time.Now()
+		} else {
+			klog.V(3).Infof("Failed to parse ignore config from file: %v", err)
+		}
+	} else {
+		// File doesn't exist or can't be read - that's OK, might be using env vars
+		klog.V(4).Infof("Could not read ignore config from %s: %v", ignorePath, err)
+	}
+	
+	// Reload block config
+	if data, err := os.ReadFile(blockPath); err == nil {
+		var blockConfig config.BlockConfig
+		if err := json.Unmarshal(data, &blockConfig); err == nil {
+			if blockConfig.Message == "" {
+				blockConfig.Message = "Resource blocked by kubechronicle policy"
+			}
+			h.blockConfig = &blockConfig
+			klog.V(2).Infof("Reloaded block config: namespace_patterns=%v, name_patterns=%v, resource_kind_patterns=%v, operation_patterns=%v",
+				blockConfig.NamespacePatterns, blockConfig.NamePatterns, blockConfig.ResourceKindPatterns, blockConfig.OperationPatterns)
+			h.lastReload = time.Now()
+		} else {
+			klog.V(3).Infof("Failed to parse block config from file: %v", err)
+		}
+	} else {
+		// File doesn't exist or can't be read - that's OK, might be using env vars
+		klog.V(4).Infof("Could not read block config from %s: %v", blockPath, err)
+	}
+}
+
+// getIgnoreConfig returns the current ignore config (thread-safe).
+func (h *Handler) getIgnoreConfig() *config.IgnoreConfig {
+	h.configMutex.RLock()
+	defer h.configMutex.RUnlock()
+	return h.ignoreConfig
+}
+
+// getBlockConfig returns the current block config (thread-safe).
+func (h *Handler) getBlockConfig() *config.BlockConfig {
+	h.configMutex.RLock()
+	defer h.configMutex.RUnlock()
+	return h.blockConfig
+}
+
+// Start starts the async event processing worker and config reloader.
 func (h *Handler) Start(ctx context.Context) {
 	go h.processEvents(ctx)
+	// Start config reloader if ConfigMap is mounted
+	if h.configPath != "" {
+		go h.reloadConfigPeriodically(ctx)
+	}
 }
 
 // processEvents processes change events asynchronously.
@@ -125,21 +217,25 @@ func (h *Handler) HandleAdmissionReview(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Get current config (may have been reloaded)
+	ignoreConfig := h.getIgnoreConfig()
+	blockConfig := h.getBlockConfig()
+	
 	// Debug: Log event details and config state for troubleshooting
 	klog.V(2).Infof("Processing event: operation=%s, kind=%s, name=%s, namespace=%s, ignoreConfig=%v, blockConfig=%v",
 		event.Operation, event.ResourceKind, event.Name, event.Namespace,
-		h.ignoreConfig != nil, h.blockConfig != nil)
-	if h.ignoreConfig != nil {
+		ignoreConfig != nil, blockConfig != nil)
+	if ignoreConfig != nil {
 		klog.V(2).Infof("Ignore patterns: namespace=%v, name=%v, kind=%v",
-			h.ignoreConfig.NamespacePatterns, h.ignoreConfig.NamePatterns, h.ignoreConfig.ResourceKindPatterns)
+			ignoreConfig.NamespacePatterns, ignoreConfig.NamePatterns, ignoreConfig.ResourceKindPatterns)
 	}
-	if h.blockConfig != nil {
+	if blockConfig != nil {
 		klog.V(2).Infof("Block patterns: namespace=%v, name=%v, kind=%v, operations=%v",
-			h.blockConfig.NamespacePatterns, h.blockConfig.NamePatterns, h.blockConfig.ResourceKindPatterns, h.blockConfig.OperationPatterns)
+			blockConfig.NamespacePatterns, blockConfig.NamePatterns, blockConfig.ResourceKindPatterns, blockConfig.OperationPatterns)
 	}
 
 	// Check if this event should be blocked
-	shouldBlock, blockPattern, blockMessage := ShouldBlock(event, h.blockConfig)
+	shouldBlock, blockPattern, blockMessage := ShouldBlock(event, blockConfig)
 	if shouldBlock {
 		// Set timestamp and ID for tracking blocked events
 		event.Timestamp = time.Now()
@@ -192,7 +288,7 @@ func (h *Handler) HandleAdmissionReview(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check if this event should be ignored (but still allowed)
-	shouldIgnore := ShouldIgnore(event, h.ignoreConfig)
+	shouldIgnore := ShouldIgnore(event, ignoreConfig)
 	if shouldIgnore {
 		klog.Infof("Ignoring %s: %s/%s in namespace %s (matches ignore pattern)",
 			event.Operation,
