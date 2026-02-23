@@ -1,8 +1,8 @@
 # MkDocs configuration for kubechronicle
 site_name: kubechronicle
 site_description: Human-readable, queryable history of Kubernetes resource changes
-site_url: https://github.com/kubechronicle/kubechronicle
-repo_url: https://github.com/kubechronicle/kubechronicle
+site_url: https://turall.github.io/kubechronicle
+repo_url: https://github.com/turall/kubechronicle
 repo_name: kubechronicle
 edit_uri: edit/main/docs/
 
