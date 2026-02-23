@@ -126,10 +126,26 @@ func (s *PostgreSQLStore) initSchema(ctx context.Context) error {
 		return fmt.Errorf("failed to migrate block_pattern column: %w", err)
 	}
 
+	// Add exec_metadata column if it doesn't exist
+	migrateExecMetadataSQL := `
+	DO $$ 
+	BEGIN
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+		               WHERE table_name='change_events' AND column_name='exec_metadata') THEN
+			ALTER TABLE change_events ADD COLUMN exec_metadata JSONB;
+		END IF;
+	END $$;
+	`
+	_, err = s.pool.Exec(ctx, migrateExecMetadataSQL)
+	if err != nil {
+		return fmt.Errorf("failed to migrate exec_metadata column: %w", err)
+	}
+
 	// Create indexes if they don't exist (after columns are added)
 	indexSQL := `
 	CREATE INDEX IF NOT EXISTS idx_change_events_allowed ON change_events(allowed);
 	CREATE INDEX IF NOT EXISTS idx_change_events_block_pattern ON change_events(block_pattern) WHERE block_pattern IS NOT NULL;
+	CREATE INDEX IF NOT EXISTS idx_change_events_exec_metadata_gin ON change_events USING GIN (exec_metadata) WHERE exec_metadata IS NOT NULL;
 	`
 	_, err = s.pool.Exec(ctx, indexSQL)
 	if err != nil {
@@ -172,12 +188,20 @@ func (s *PostgreSQLStore) Save(event *model.ChangeEvent) error {
 		}
 	}
 
+	var execMetadataJSON []byte
+	if event.ExecMetadata != nil {
+		execMetadataJSON, err = json.Marshal(event.ExecMetadata)
+		if err != nil {
+			return fmt.Errorf("failed to marshal exec metadata: %w", err)
+		}
+	}
+
 	insertSQL := `
 		INSERT INTO change_events (
 			id, timestamp, operation, resource_kind, namespace, name,
-			actor, source, diff, object_snapshot, allowed, block_pattern
+			actor, source, diff, object_snapshot, allowed, block_pattern, exec_metadata
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
 		)
 		ON CONFLICT (id) DO NOTHING
 	`
@@ -199,6 +223,7 @@ func (s *PostgreSQLStore) Save(event *model.ChangeEvent) error {
 		snapshotJSON,
 		allowed,
 		blockPattern,
+		execMetadataJSON,
 	)
 
 	if err != nil {
@@ -307,7 +332,7 @@ func (s *PostgreSQLStore) QueryEvents(ctx context.Context, filters QueryFilters,
 
 	querySQL := fmt.Sprintf(`
 		SELECT id, timestamp, operation, resource_kind, namespace, name,
-		       actor, source, diff, object_snapshot, allowed, block_pattern
+		       actor, source, diff, object_snapshot, allowed, block_pattern, exec_metadata
 		FROM change_events
 		%s
 		ORDER BY timestamp %s
@@ -345,7 +370,7 @@ func (s *PostgreSQLStore) QueryEvents(ctx context.Context, filters QueryFilters,
 func (s *PostgreSQLStore) GetEventByID(ctx context.Context, id string) (*model.ChangeEvent, error) {
 	querySQL := `
 		SELECT id, timestamp, operation, resource_kind, namespace, name,
-		       actor, source, diff, object_snapshot, allowed, block_pattern
+		       actor, source, diff, object_snapshot, allowed, block_pattern, exec_metadata
 		FROM change_events
 		WHERE id = $1
 	`
@@ -394,11 +419,12 @@ func (s *PostgreSQLStore) scanEvent(rows interface {
 		snapshotJSON   []byte
 		allowed        bool
 		blockPattern   *string
+		execMetadataJSON []byte
 	)
 
 	err := rows.Scan(
 		&id, &timestamp, &operation, &resourceKind, &namespace, &name,
-		&actorJSON, &sourceJSON, &diffJSON, &snapshotJSON, &allowed, &blockPattern,
+		&actorJSON, &sourceJSON, &diffJSON, &snapshotJSON, &allowed, &blockPattern, &execMetadataJSON,
 	)
 	if err != nil {
 		return nil, err
@@ -437,6 +463,14 @@ func (s *PostgreSQLStore) scanEvent(rows interface {
 		if err := json.Unmarshal(snapshotJSON, &event.ObjectSnapshot); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal object snapshot: %w", err)
 		}
+	}
+
+	if len(execMetadataJSON) > 0 {
+		var execMetadata model.ExecMetadata
+		if err := json.Unmarshal(execMetadataJSON, &execMetadata); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal exec metadata: %w", err)
+		}
+		event.ExecMetadata = &execMetadata
 	}
 
 	return event, nil

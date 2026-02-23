@@ -38,6 +38,13 @@ build-api:
 	go build -o bin/api ./cmd/api
 	@echo "✓ Binary built: bin/api"
 
+# Build the audit processor binary
+build-audit-processor:
+	@echo "Building audit processor..."
+	@mkdir -p bin
+	go build -o bin/audit-processor ./cmd/audit-processor
+	@echo "✓ Binary built: bin/audit-processor"
+
 # Run the webhook locally
 run: build
 	@echo "Running webhook locally..."

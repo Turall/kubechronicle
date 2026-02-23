@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS change_events (
 	object_snapshot JSONB,
 	allowed BOOLEAN NOT NULL DEFAULT true,
 	block_pattern VARCHAR(255),
+	exec_metadata JSONB,
 	created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -30,6 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_change_events_block_pattern ON change_events(bloc
 -- GIN indexes for JSONB fields to enable efficient queries
 CREATE INDEX IF NOT EXISTS idx_change_events_actor_gin ON change_events USING GIN (actor);
 CREATE INDEX IF NOT EXISTS idx_change_events_source_gin ON change_events USING GIN (source);
+CREATE INDEX IF NOT EXISTS idx_change_events_exec_metadata_gin ON change_events USING GIN (exec_metadata) WHERE exec_metadata IS NOT NULL;
 
 -- Example queries:
 -- 
@@ -61,4 +63,23 @@ CREATE INDEX IF NOT EXISTS idx_change_events_source_gin ON change_events USING G
 -- Get all allowed events:
 -- SELECT * FROM change_events 
 -- WHERE allowed = true
+-- ORDER BY timestamp DESC;
+--
+-- Get all exec operations:
+-- SELECT * FROM change_events 
+-- WHERE operation = 'EXEC'
+-- ORDER BY timestamp DESC;
+--
+-- Get exec operations for a specific pod:
+-- SELECT * FROM change_events 
+-- WHERE operation = 'EXEC' 
+--   AND resource_kind = 'Pod' 
+--   AND namespace = 'default' 
+--   AND name = 'my-pod'
+-- ORDER BY timestamp DESC;
+--
+-- Get exec operations by a specific user:
+-- SELECT * FROM change_events 
+-- WHERE operation = 'EXEC' 
+--   AND actor->>'username' = 'user@example.com'
 -- ORDER BY timestamp DESC;
