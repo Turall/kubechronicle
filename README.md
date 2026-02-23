@@ -325,8 +325,26 @@ See [COVERAGE.md](COVERAGE.md) for detailed testing guidelines.
   /model/               - Data models
   /config/              - Configuration management
 /deploy/webhook/       - Kubernetes manifests
-/docs/                 - Documentation
+/docs/                 - Documentation (MkDocs)
 ```
+
+## Documentation
+
+The project uses [MkDocs](https://www.mkdocs.org/) with the [Material theme](https://squidfunk.github.io/mkdocs-material/). To build and serve the documentation locally:
+
+```bash
+# Install docs dependencies (one-time)
+make deps-docs
+# or: pip install -r requirements-docs.txt
+
+# Build static site
+make docs
+
+# Serve locally with live reload (http://127.0.0.1:8000)
+make docs-serve
+```
+
+Configuration: `mkdocs.yml`. Source: `docs/`.
 
 ## License
 

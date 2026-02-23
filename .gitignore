@@ -40,3 +40,9 @@ tls.key
 coverage.out
 coverage.html
 *.coverprofile
+
+# MkDocs build output
+site/
+
+__pycache__/
+.venv/

@@ -1,21 +1,23 @@
 # Makefile for kubechronicle development
 
-.PHONY: help build run test clean deps fmt vet lint
+.PHONY: help build run test clean deps fmt vet lint docs docs-serve
 
 # Default target
 help:
 	@echo "kubechronicle Makefile"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  deps        - Download and install dependencies"
-	@echo "  build       - Build the webhook binary"
-	@echo "  run         - Run the webhook locally (requires TLS certs)"
-	@echo "  test        - Run tests"
-	@echo "  fmt         - Format code"
-	@echo "  vet         - Run go vet"
-	@echo "  lint        - Run linter (if installed)"
-	@echo "  clean       - Clean build artifacts"
+	@echo "  deps         - Download and install dependencies"
+	@echo "  build        - Build the webhook binary"
+	@echo "  run          - Run the webhook locally (requires TLS certs)"
+	@echo "  test         - Run tests"
+	@echo "  fmt          - Format code"
+	@echo "  vet          - Run go vet"
+	@echo "  lint         - Run linter (if installed)"
+	@echo "  clean        - Clean build artifacts"
 	@echo "  docker-build - Build Docker image"
+	@echo "  docs         - Build documentation (MkDocs)"
+	@echo "  docs-serve   - Serve documentation locally (MkDocs)"
 
 # Download and install dependencies
 deps:
@@ -139,3 +141,22 @@ clean:
 docker-build:
 	@echo "Building Docker image..."
 	docker build -t kubechronicle/webhook:latest .
+
+# Install documentation dependencies (MkDocs + Material theme)
+deps-docs:
+	@echo "Installing documentation dependencies..."
+	pip install -r requirements-docs.txt
+	@echo "✓ Documentation dependencies installed"
+
+# Build documentation site (MkDocs)
+docs:
+	@echo "Building documentation..."
+	@command -v mkdocs >/dev/null 2>&1 || { echo "MkDocs not found. Run: make deps-docs or pip install mkdocs mkdocs-material"; exit 1; }
+	mkdocs build
+	@echo "✓ Documentation built in site/"
+
+# Serve documentation locally (live reload)
+docs-serve:
+	@echo "Serving documentation at http://127.0.0.1:8000"
+	@command -v mkdocs >/dev/null 2>&1 || { echo "MkDocs not found. Run: make deps-docs or pip install mkdocs mkdocs-material"; exit 1; }
+	mkdocs serve

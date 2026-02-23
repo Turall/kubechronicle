@@ -1,0 +1,62 @@
+# MkDocs configuration for kubechronicle
+site_name: kubechronicle
+site_description: Human-readable, queryable history of Kubernetes resource changes
+site_url: https://github.com/kubechronicle/kubechronicle
+repo_url: https://github.com/kubechronicle/kubechronicle
+repo_name: kubechronicle
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - codehilite
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - User Guide:
+    - Event Flow & Logic: events-and-filters.md
+    - Exec Tracking (Audit): audit-processor.md
+  - API Reference: api.md
+  - Deployment: deployment.md
+  - UI:
+    - Authentication: auth.md
+    - UI Auth & Login: ui-auth.md
+    - Roles: roles.md
+    - Pattern Management: pattern-management.md
+    - Troubleshooting UI: troubleshooting-ui.md
+  - Architecture: architecture.md
+  - Development: development.md
